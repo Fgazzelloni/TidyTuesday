@@ -1,0 +1,176 @@
+---
+title: "UN Votes - TidyTuesday week 13"
+author: "Federica Gazzelloni"
+date: "26/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Libraries
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(DT)
+library(unvotes)
+library(tidytuesdayR)
+library(ggplot2)
+
+library(showtext)
+font_add_google("Share Tech Mono", "techmono")
+showtext_opts(dpi = 320)
+showtext_auto(enable = FALSE)
+```
+
+Get data
+```{r message=FALSE, warning=FALSE}
+unvotes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/unvotes.csv')
+roll_calls <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/roll_calls.csv')
+issues <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/issues.csv')
+```
+
+
+UNvotes_full and UNvotes_sub
+```{r}
+unvotes_full <- unvotes %>%
+  inner_join(un_roll_calls, by = "rcid") %>%
+  inner_join(un_roll_call_issues, by = "rcid")
+
+unvotes_sub <- unvotes_full%>%
+  select(date,country,session,vote,issue)
+```
+
+UN Countries
+```{r}
+german<-unvotes_full%>%filter(str_detect(country, "Germ"))
+#table(german$country)
+congo<-unvotes_full%>%filter(str_detect(country, "Congo"))
+#table(congo$country)
+yemen<-unvotes_full%>%filter(str_detect(country, "Yemen"))
+#table(yemen$country)
+guinea<-unvotes_full%>%filter(str_detect(country, "Guinea"))
+#table(guinea$country)
+
+unvotes_merged_country_names<-unvotes_sub%>%
+  mutate(country=case_when(country=="Federal Republic of Germany"~"Germany",
+                           country=="German Democratic Republic"~"Germany",
+                           country=="Congo - Brazzaville"~"Congo",
+                           country=="Congo - Kinshasa"~"Congo",
+                           country=="Micronesia (Federated States of)"~"Micronesia",
+                           country=="Myanmar (Burma)"~"Myanmar",
+                           country=="Yemen Arab Republic"~"Yemen",
+                           country=="Yemen People's Republic"~"Yemen",
+                           country=="Guinea-Bissau"~"Giunea",
+                           TRUE~country))%>%
+  select(date,country,vote,issue) %>%
+  arrange(date)
+```
+
+by_country_year
+```{r message=FALSE, warning=FALSE}
+by_country_year <- unvotes_merged_country_names %>%
+  group_by(year = year(date), country) %>%
+  summarize(issue,votes = n(),
+            percent_yes = round(mean(vote == "yes")*100,1),
+            percent_no = round(mean(vote == "no")*100,1),
+            percent_astain = round(mean(vote == "abstain")*100,1))
+```
+
+Visualization
+```{r main_plot}
+library(graphics)
+
+main_plot<-ggplot(data=by_country_year,
+                  aes(x=year,y=votes,col=votes))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks=seq(1946,2019,10))+
+  
+  theme_void()+
+  theme(axis.text.x=element_text(color=bck_clr))
+```
+
+UN background image
+```{r message=FALSE, warning=FALSE}
+library(ggimage)
+bck_color <- "#FEFCEF"
+
+UN_img="https://camo.githubusercontent.com/654fb54c78403255bbe1457b6a75423f5e370ee075eab4db0a189b886b68b8d7/68747470733a2f2f75706c6f61642e77696b696d656469612e6f72672f77696b6970656469612f636f6d6d6f6e732f7468756d622f652f65652f554e5f656d626c656d5f626c75652e7376672f3132303570782d554e5f656d626c656d5f626c75652e706e67"
+
+g<-ggbackground(main_plot, UN_img, alpha=.7,color="#94BCFF")
+```
+
+Final plot annotations
+```{r message=FALSE, warning=FALSE}
+showtext_auto(enable = TRUE)
+library(patchwork)
+library(sf)
+library(rnaturalearth)
+library(magick)
+library(grid)
+library(png)
+
+final <- g + plot_annotation(
+    title = "UN Votes from 1946 to 2019",
+    subtitle="on six issues: Colonialism,Arms control and disarmament,Economic development,Human rights,Palestinian conflict Nuclear weapons and nuclear material",
+    caption = "Visualization: Federica Gazzelloni | Data: Harvards' UN votes",
+    theme = theme(
+      plot.margin = margin(10,10,10,10),
+      plot.background = element_rect(fill = bck_color, color = NA),
+      plot.caption = element_text(family = "techmono", size = 9, color = bck_clr, margin = margin(15,0,0,0), hjust = 0.95)
+    )
+  )
+
+ragg::agg_png(here::here("render", paste0("UN_votes_",
+                                          format(Sys.time(),
+                                                 "%Y%m%d_%H%M%S"),
+                                          ".png")),
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+```
+
+Read the image, attach the Tidytuesday logo and save it
+```{r}
+tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+
+UN_votes_plot <- image_read("~/R/Projects/TidyTuesday/render/UN_votes_20210326_201814.png")
+
+attached_logo <- image_composite(UN_votes_plot, tidy_logo,
+                                 #offset = "0+0",
+                                 operator="atop",
+                                 gravity="northeast") # tell R where to put the logo
+
+
+image_write(attached_logo, path = "~/R/Projects/TidyTuesday/render/UN_votes_W13.png", format = "png") # save final plot
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
