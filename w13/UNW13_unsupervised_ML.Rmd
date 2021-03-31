@@ -1,0 +1,137 @@
+---
+title: "un_unsupervised_ML"
+author: "fg"
+date: "26/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+unvotes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/unvotes.csv')
+
+issues <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-23/issues.csv')
+```
+
+
+
+```{r}
+unvotes_df <- unvotes%>%
+  select(country,rcid,vote)%>%
+  mutate(vote = factor(vote,levels = c("no","abstain","yes")),
+         vote = as.numeric(vote),
+         rcid = paste0("rcid_",rcid))%>%
+  pivot_wider(names_from = "rcid",values_from = "vote", values_fill = 2)
+
+#glimpse(unvotes_df)
+```
+
+
+## UNSUPEVISED MACHINE LEARNING##################################
+
+### 1 - Principal component analysis (PCA)
+
+
+```{r}
+#library(tidymodels)
+
+library(recipes)
+# description of what steps should be applied to a data set in order to get it ready for data analysis
+
+# for creating design matrices
+pca_rec <- recipe(~., data = unvotes_df) %>%
+  update_role(country,new_role ="id") %>%
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors()) #convert numeric data into one or more principal components
+
+pca_prep <- prep(pca_rec)
+  
+```
+
+
+
+```{r}
+bake(pca_prep,new_data=NULL)%>%
+  ggplot(aes(PC1,PC2,label=country))+
+  geom_point(color="midnightblue",alpha=0.7,size=2)+
+  geom_text(check_overlap = TRUE, hjust="inward")
+```
+
+
+```{r}
+?tidy
+pca_comps<-tidy(pca_prep,2)%>%
+  filter(component %in% paste0("PC",1:4))%>%
+  left_join(issues %>% mutate(terms=paste0("rcid_",rcid)))%>%
+  filter(!is.na(issue))%>%
+  group_by(component)%>%
+  slice_max(abs(value),n=8)%>%
+  ungroup()
+
+pca_comps%>%
+  mutate(value=abs(value))%>%
+  ggplot(aes(value,terms,fill=issue))+
+  geom_col(position="dodge")+
+  facet_wrap(~component,scales="free_y")+
+  labs(y=NULL,fill=NULL,
+       x= "Absolute value of contribution")
+```
+
+
+
+### 2 - UMAP
+
+```{r}
+library(embed)
+# ?step_umap project a set of features into a smaller space
+
+umap_rec <- recipe(~., data = unvotes_df) %>%
+  update_role(country,new_role ="id") %>%
+  step_normalize(all_predictors()) %>%
+  step_umap(all_predictors()) #convert numeric data into one or more principal components
+
+umap_prep <- prep(umap_rec)
+  
+```
+
+
+
+```{r}
+bake(umap_prep,new_data=NULL)%>%
+  ggplot(aes(umap_1,umap_2,label=country))+
+  geom_point(color="midnightblue",alpha=0.7,size=2)+
+  geom_text(check_overlap = TRUE, hjust="inward")
+```
+
+
+```{r}
+# ?step_ica
+# ?step_kpca
+# ?step_kpca_rbf
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
