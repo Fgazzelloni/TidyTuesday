@@ -10,10 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 Load libraries
 ```{r libraries, message=FALSE, warning=FALSE}
 library(tidytuesdayR)
@@ -119,7 +115,7 @@ plyr::count(allCategories_sub$categories)#17
 
 
 Selection of data for making plots
-```{r}
+```{r message=FALSE, warning=FALSE}
 my_companies <- sort(c("shiseido","maybelline","mac","lancôme","l'oréal","guerlain","estée lauder","clinique","benefit cosmetics"), decreasing = TRUE)
 
 make_up_for_plot <- make_up_sub %>%
@@ -176,7 +172,7 @@ plot2<-make_up_for_plot%>%
 
 
 Final plot
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(ggimage)
 require(magick)
 
@@ -218,7 +214,7 @@ tidy_logo <- image_read("https://raw.githubusercontent.com/rfordatascience/tidyt
   image_resize("300x300")
 
 
-The_Pudding_plot <- image_read(here::here("w14/makeup/make_up_20210402_230031.png"))
+The_Pudding_plot <- image_read(here::here("w14/makeup/make_up_20210402_235232.png"))
 
 attached_logo <- image_composite(The_Pudding_plot, tidy_logo,
                                  operator="atop",
@@ -226,7 +222,7 @@ attached_logo <- image_composite(The_Pudding_plot, tidy_logo,
 
 
 image_write(attached_logo, 
-            path = "/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w14/makeup/The_Pudding_plot_w14.png", format = "png") # save final plot
+            path = "/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w14/The_Pudding_plot_w14.png", format = "png") # save final plot
 ```
 
 
