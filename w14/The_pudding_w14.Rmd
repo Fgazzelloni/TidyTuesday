@@ -1,0 +1,257 @@
+---
+title: "The_pudding_w14"
+author: "Federica Gazzelloni"
+date: "2/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidytuesdayR)
+library(tidyverse)
+library(showtext)
+library(ggtext)
+
+library(scales)
+
+library(extrafont)
+library(patchwork)
+
+library(cowplot)
+
+library(ragg)
+library(rmarkdown)
+
+
+library(hrbrthemes)
+library(wesanderson)
+
+```
+
+
+
+```{r data, message=FALSE, warning=FALSE}
+sephora <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/sephora.csv')
+ulta <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/ulta.csv')
+
+allCategories <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allCategories.csv')
+allShades <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allShades.csv')
+allNumbers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allNumbers.csv')
+
+```
+
+
+```{r fonts, message=FALSE, warning=FALSE}
+loadfonts()
+font_add_google(name = "Amatic SC", family = "amatic-sc")
+font_add_google("Cedarville Cursive", "cedarville")
+
+showtext_auto(enable = TRUE)
+
+palette <- c(
+"#FF0000","#FF7070","#F09200","#FFBF1F","#00A08A","#2989A3","#5BBCD6","#A475D9")
+
+GrandBudapest2<-wes_palette("GrandBudapest2")
+  
+
+```
+
+
+```{r shops, message=FALSE, warning=FALSE}
+sephora_sub<-sephora%>%
+  mutate(shop=rep("sephora",length(brand)),
+         brand=tolower(brand),
+         product=tolower(product),
+         name=tolower(name))%>%
+  select(brand,product,name)
+
+ulta_sub<-ulta%>%
+  mutate(shop=rep("ulta",length(brand)),
+         brand=tolower(brand),
+         product=tolower(product),
+         name=tolower(name))%>%
+  select(brand,product,name)
+
+
+shops<-rbind(sephora_sub,ulta_sub)
+```
+
+
+
+```{r make_up, message=FALSE, warning=FALSE}
+allCategories_sub<-allCategories%>%
+  mutate(brand=tolower(brand),
+         product=tolower(product),
+         name=tolower(name))%>%
+  select(brand,product,name,hex,lightness)
+
+allShades_sub<-allShades%>%
+  mutate(brand=tolower(brand),
+         product=tolower(product),
+         name=tolower(name))%>%
+  select(brand,product,name,hex,hue,sat,lightness)
+
+allNumbers_sub<-allNumbers%>%
+  mutate(brand=tolower(brand),
+         product=tolower(product),
+         name=tolower(name))%>%
+  select(brand,product,name,hex,lightness,lightToDark)
+
+
+
+make_up<-full_join(allCategories_sub,allShades_sub,by.x=hex,by.y=lightness)
+make_up<-full_join(make_up,allNumbers_sub,by.x=hex,by.y=lightness)
+
+make_up_sub<-make_up%>%
+  select(brand,name,hex,hue,sat,lightness)%>%
+  filter(!is.na(hue))%>%
+  arrange(hex)
+
+```
+
+```{r}
+my_companies <- sort(c("L'Oréal", "Estée Lauder", "Clinique", "Guerlain", "Shiseido","MAC", "Maybelline", "Lancôme", "Benefit Cosmetics"), decreasing = TRUE)
+
+my_companies<-tolower(my_companies)
+
+
+make_up_for_plot <- make_up_sub %>%
+  filter(brand %in% my_companies) %>%
+  select(brand, name,hex, hue,sat,lightness) %>%
+  mutate(brand=as.factor(brand)) %>%
+  group_by(brand) %>%
+  mutate(mean_lightness = mean(lightness)) %>%
+  ungroup() %>%
+  mutate(brand = fct_reorder(brand, mean_lightness))
+
+
+
+library(ggfx)
+library(gridExtra)
+#library(Hmisc)
+
+
+
+stat_sum_df <- function(fun, geom="crossbar", ...) {
+  stat_summary(fun.data = fun, colour = "white", 
+               geom = geom, width = 0.2, ...)}
+
+plot1<-make_up_for_plot%>%
+  ggplot(aes(brand,lightness,col=hex)) + 
+  with_blur(
+    geom_boxplot(size=5,show.legend = FALSE)) + 
+  geom_jitter(width = 0.15,height = 0.0,size = 1) + 
+  scale_colour_identity() + 
+  coord_polar() + 
+  #stat_sum_df("median_hilow", geom = "text",mapping = aes(group = brand,label=name))+
+  labs(title = "Shades of makeup from The Pudding",
+       subtitle = "Two shops Sephora and Ultà",
+       caption = "107 brands",
+       tag = "The Pudding",
+       x = "Lightness",
+       y = "Brands)",
+       colour = "white")+
+  theme_void() + 
+  theme(plot.background = element_rect(fill = "black",color="black"),
+        axis.text.x = element_text(size = 10, vjust = 2,color="white"),
+        plot.title = element_text(size = 12,hjust = 0.5,color="white"),
+        plot.subtitle = element_text(size = 10,hjust = 0.5,color="white"),
+        plot.caption = element_text(size = 10,hjust = 0.5, margin = margin(t = 5, b = 10),color="white"),
+        plot.tag = element_text()
+          ) 
+  
+
+plot2<-make_up_for_plot%>%
+  ggplot(aes(brand,lightness,col=hex)) + 
+  with_blur(
+    geom_point(show.legend = FALSE)) + 
+  geom_jitter(width = 0.15,height = 0.0,size = 2) + 
+  scale_colour_identity() +
+  coord_polar(direction=1) +
+  theme_void() + 
+  theme(plot.background = element_rect(fill = "black")) + 
+  facet_wrap(vars(brand))
+  
+
+```
+
+
+
+
+```{r}
+library(ggimage)
+require(magick)
+
+
+main_plot <- plot1 + plot2
+
+final <- main_plot + 
+  labs(title = "Makeup",
+       caption = "TidyTuesday W14 - The Pudding - Viz - @fgazzelloni") + 
+  scale_fill_manual(values = palette,
+                    guide = guide_legend(title = NULL)) + 
+  theme_void(base_family = "cedarville") + 
+  theme(plot.background = element_rect(fill = "#FCEBDA",color = NA),
+        strip.text.x = element_text(size = 12, color = "black"),
+        panel.grid.major = element_line(size = 0.03, linetype = 'solid',colour = "black"),
+        plot.margin = margin(10, 10, 5, 10),
+        plot.title = element_text(size = 56,hjust = 0.5, margin = margin(t = 5, b = 10)),
+        plot.caption = element_text(hjust = 0.5, size = 16),
+        #axis.text.x = element_text(size = 20, vjust = 2),
+        legend.position = "top",
+        legend.text = element_text(size = 20),
+        legend.key.height = unit(0.75, "lines"),
+        legend.margin = margin(b = 5))
+
+
+
+ggsave(here::here("C:/Users/Valerio/Documents/R/Projects/R_general_resourses/TidyTuesday/TidyTuesday/w14/makeup","make_up_1.png"),type="cairo")
+
+```
+
+```{r}
+ragg::agg_png(here::here("w14","makeup","make_up_1.png",
+                         paste0("make_up_",format(Sys.time(),"%Y%m%d_%H%M%S"),".png")),res = 320, width = 14, height = 8, units = "in")
+
+
+final
+                                
+dev.off()                                
+                                
+```
+
+Read the image, attach the Tidytuesday logo and save it
+```{r}
+tidy_logo <- image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+
+The_Pudding_plot <- image_read("C:/Users/Valerio/Documents/R/Projects/R_general_resourses/TidyTuesday/TidyTuesday/w14/makeup           .png")
+
+attached_logo <- image_composite(The_Pudding_plot, tidy_logo,
+                                 #offset = "0+0",
+                                 operator="atop",
+                                 gravity="northeast") # tell R where to put the logo
+
+
+image_write(attached_logo, 
+            path = "C:/Users/Valerio/Documents/R/Projects/R_general_resourses/TidyTuesday/TidyTuesday/w14/makeup/The_Pudding_plot_w14.png", format = "png") # save final plot
+```
+
+
+
+
+
+
+
+
+
+
