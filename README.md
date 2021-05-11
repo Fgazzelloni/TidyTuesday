@@ -5,8 +5,7 @@ https://github.com/rfordatascience/tidytuesday
 
 
 # How to import data for TidyTuesday
-
-load the package "tidytuesdayR" and the selected data-set based on released date
+Install R package from CRAN via: install.packages("tidytuesdayR")
 
 # Examples of Imported Data 
 
