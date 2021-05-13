@@ -127,75 +127,72 @@ library(spDataLarge)
 library(maps)
 library(viridis)
 library(ggthemes)
+library(RColorBrewer)
+
+# add font to mac---
+library(showtext)
 library(extrafont)
+#font_import(pattern="world of water")
+loadfonts()
 fonts()
 
 # mapping --------------------------------
 
+mypalette<-display.brewer.pal(7,"BrBG")
 us_county_map <- map_data("county")
 
-ggplot()+
+final_plot<-ggplot()+
   geom_polygon(data=us_county_map,aes(x=long,y=lat,group = group),
                fill=NA,color = "lightblue")+
   geom_point(data=subset(s,lat>25&lat<50),
              aes(x=lng,y=lat, group =st,color=brd.available),
              alpha=0.3,size=0.5)+
-  scale_color_viridis()+
+  scale_color_viridis(labels = scales::percent)+
   labs(title="America's Broadband",
        subtitle="available values by County",
-       caption="",
+       caption="Viz. Federica Gazzelloni | US Broadband,Microsoft GitHub,The Verge | TidyTuesday week20",
        color="")+
   theme_map()+
-  theme(plot.title =element_text(size=40,face="bold",family ="World of Water"),
-        plot.subtitle =element_text(size=25,face="bold",family ="World of Water"),
+  theme(plot.title =element_text(size=40,face="bold",family ="Courier New",color="black"),
+        plot.subtitle =element_text(size=25,face="bold",family ="Courier New"),
+        plot.caption =element_text(size=9,face="bold",family ="Courier New"),
         plot.title.position = "panel",
         plot.margin = margin(5,5,5,5),
-        legend.text = element_text(size=8,family ="World of Water"))
+        legend.text = element_text(size=8,family ="Courier New"))
 
 
 ################################################################################
 
 
-head(s)
-fit<-lm(usage.1020~usage.1119,data=s)
-summary(fit)
-plot(fit)
-confint(fit)
+####### SAVING ######################################
+ragg::agg_png(here::here("tidytuesday_Broadband.png"),
+              res = 320, width = 14, height = 8, units = "in")
+final_plot
 
-mu<-s$mae
-plot(density(mu))
-lines(density(std),col="red")
-lines(density(z))
-
-ggplot(data=s) +
-  geom_density(aes(y=mae,group=st,color=st)) +
-  #geom_line(aes(x=brd.available,y=mae)) +
-  coord_flip()
+dev.off()
 
 
 
-
-mean<-mean(mu)
-std<-s$msd
-mean(std)
-x<-s$brd.available
-mean(x)
-range(std)
-z<-log(s$brd.available-mu)/std
+#### ATTACHING LOGO ############################ 
+library(ggimage)
+library(magick)
 
 
-range(z)
-h<-dnorm(z,mu,std)
-v<-pnorm(z,mu,std)
-plot(h)
-plot(v)
-qqplot(h,v)
-x <- rnorm(z, mu, std)
-range(x);length(x)
-x[is.nan(x)]<-0
-hist(x, probability=TRUE)
-xx <- seq(min(x), max(x), length=32707)
-lines(xx, dnorm(xx,mu, std),col="pink")
+tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+
+final_plot <- image_read("tidytuesday_Broadband.png")
+
+attached_logo <- image_composite(final_plot, tidy_logo,
+                                 operator="atop",
+                                 gravity="northeast") # tell R where to put the logo
+
+
+image_write(attached_logo, path = "tidytuesday_Broadband.png", format = "png") # save final plot
+
+
+
 
 
 
