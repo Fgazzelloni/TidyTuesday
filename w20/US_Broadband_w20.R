@@ -46,18 +46,15 @@ broadband$broadband.usage<-as.double(broadband$broadband.usage)
 
 broadband <- broadband %>%
   mutate(county.name=sub(" County","",county.name)) %>%
-  separate(county.id,into=c("state.id","county.id"),sep=-3) 
-  
-  
-broadband <- broadband %>%
+  separate(county.id,into=c("state.id","county.id"),sep=-3) %>%
   mutate(county.name = case_when(
     county.name=="LaSalle Parish" ~ "La Salle Parish",
     TRUE~county.name))
-    
+
 # separate the county.id by state and county---------------
   broadband_zipcode <- broadband_zipcode %>%
-  separate(county.id,into=c("state.id","county.id"),sep=-3) 
-  
+  separate(county.id,into=c("state.id","county.id"),sep=-3)
+
 
 #####################################
 # in broadband_zipcode
@@ -79,7 +76,7 @@ my_df <- broadband%>%
   drop_na()
 
 
-names(my_df)<-c("st","state.id","county.id","county.name","postal.code","brd_available","usage_micro","usage.general","mae","alpha","msd")
+names(my_df)<-c("st","state.id","county.id","county.name","postal.code","brd.available","usage.1119","usage.1020","mae","alpha","msd")
 
 head(my_df);dim(my_df)
 
@@ -107,8 +104,8 @@ ss<-broadband%>%
 
 
 # make a new column with y/n broadband in the county
-my_df <- my_df %>% 
-  mutate(broadband.id=ifelse(brd_available==0,"no","yes"))
+my_df <- my_df %>%
+  mutate(broadband.id=ifelse(brd.available==0,"no","yes"))
 
 
 # find the geocodes with postal codes -------------------
@@ -118,15 +115,8 @@ geocode_zip<-geocode_zip(my_df$postal.code)
 # add the geocodes------------------------------
 s<-my_df%>%
   inner_join(geocode_zip,by=c("postal.code"="zipcode"))%>%
-  plyr::gather(key="id",value="")
+  unite("id",state.id:county.id,sep= "")
 
-dim(s)
-dim(my_df)
-
-head(s)
-
-# unite the state.id and county.id again ---------
-s<-s%>%unite("id",state.id:county.id,sep= "")
 
 # load the libraries for plotting ---------------------
 library(sf)
@@ -136,112 +126,84 @@ library(spDataLarge)
 
 library(maps)
 library(viridis)
-
+library(ggthemes)
+library(extrafont)
+fonts()
 
 # mapping --------------------------------
-us_map <- map_data("state")
-us_map %>%
-  ggplot(aes(x = long, y = lat, group = group)) +
-  geom_polygon(fill = "lightblue", color = "black") +
-  theme_void()
 
-head(us_map)
-head(my_df)
+us_county_map <- map_data("county")
 
-s %>%
-  full_join(us_map, by = c("county.name" = "region")) %>%
-  ggplot() +
-  geom_polygon(aes(x = long, y = lat.y),color = "black") +
-  geom_point(aes(x = lng, y = lat.x, group = group,fill = "white")) +
-  theme_void() +
-  scale_fill_viridis(name = "US Broadband (%)",discrete=TRUE)
-
-
-  ggplot(us_map,aes(x = long, y = lat,group = group)) +
-  geom_polygon(color = "white") +
-  geom_point(data= s, aes(x = lng, y = lat ,group = postal.code,color=county.name)) +
-  theme_void() +
-  scale_fill_viridis(name = "US Broadband (%)",discrete=TRUE)+
-  theme(legend.position = "none")
+ggplot()+
+  geom_polygon(data=us_county_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "lightblue")+
+  geom_point(data=subset(s,lat>25&lat<50),
+             aes(x=lng,y=lat, group =st,color=brd.available),
+             alpha=0.3,size=0.5)+
+  scale_color_viridis()+
+  labs(title="America's Broadband",
+       subtitle="available values by County",
+       caption="",
+       color="")+
+  theme_map()+
+  theme(plot.title =element_text(size=40,face="bold",family ="World of Water"),
+        plot.subtitle =element_text(size=25,face="bold",family ="World of Water"),
+        plot.title.position = "panel",
+        plot.margin = margin(5,5,5,5),
+        legend.text = element_text(size=8,family ="World of Water"))
 
 
-  library(choroplethr)
-  library(choroplethrMaps)
+################################################################################
 
 
+head(s)
+fit<-lm(usage.1020~usage.1119,data=s)
+summary(fit)
+plot(fit)
+confint(fit)
 
- s$id<-as.double(s$id) 
-  
-  my_map<-df_pop_county%>%
-    inner_join(s,by=c("region"="id")) %>%
-    mutate(value.x=value, value=brd_available)%>%
-    dplyr::select(region,value)%>%
-      dplyr::group_by(region) %>%
-      dplyr::summarize(value = median(value)) %>%
-      dplyr::mutate(region = as.numeric(region))
+mu<-s$mae
+plot(density(mu))
+lines(density(std),col="red")
+lines(density(z))
 
-
-    group_by(region)%>%
-    summarize(brd=median(value))
-
-
-# first plot with broadband in counties ---------
-county_choropleth(my_map,
-                    title  = "Broadband availlability in US Counties",
-                    legend = "percentage",
-                    num_colors = 0)
-
-#################################################
-   
-# second plot with usage by microsoft---------------     
-    my_map2<-df_pop_county%>%
-      inner_join(s,by=c("region"="id")) %>%
-      mutate(value.x=value, value=usage_micro)%>%
-      dplyr::select(region,value)%>%
-      dplyr::group_by(region) %>%
-      dplyr::summarize(value = median(value)) %>%
-      dplyr::mutate(region = as.numeric(region))    
-    
-county_choropleth(my_map2,
-                      title  = "Broadband usage by Microsoft in US Counties",
-                      legend = "percentage",
-                      num_colors = 0)    
-  #############################################  
-  
-  
-choro = CountyChoropleth$new(my_map)
-  choro$title = "America's Broadband"
-  choro$ggplot_scale = scale_fill_brewer(name="Broadband", palette="gray62" , drop=T)
-  choro$render()
-
-
-#################################################
-# third plot with value above 15% ------------------  
-  my_map3<-my_map%>%mutate(value=ifelse(value<=0.15,0,value))
-  choro = CountyChoropleth$new(my_map2)
-  choro$title = "America's Broadband"
-  choro$ggplot_scale = scale_fill_brewer(name="Broadband", palette="gray62" , drop=FALSE)
-  choro$render()
+ggplot(data=s) +
+  geom_density(aes(y=mae,group=st,color=st)) +
+  #geom_line(aes(x=brd.available,y=mae)) +
+  coord_flip()
 
 
 
-# select parish data in united states with broadband usage -----------------------
-  
-  brd_parish<-s%>%filter(str_detect(county.name,"Parish"))
-  
-  my_map_parish<-df_pop_county%>%
-    inner_join(brd_parish,by=c("region"="id")) %>%
-    mutate(value.x=value, value=usage_micro)%>%
-    dplyr::select(region,value)%>%
-    dplyr::group_by(region) %>%
-    dplyr::summarize(value = median(value)) %>%
-    dplyr::mutate(region = as.numeric(region))  
-  
-  
-  county_choropleth(my_map_parish,
-                    title  = "Broadband usage by Microsoft in US Parish",
-                    legend = "percentage",
-                    num_colors = 0)   
+
+mean<-mean(mu)
+std<-s$msd
+mean(std)
+x<-s$brd.available
+mean(x)
+range(std)
+z<-log(s$brd.available-mu)/std
+
+
+range(z)
+h<-dnorm(z,mu,std)
+v<-pnorm(z,mu,std)
+plot(h)
+plot(v)
+qqplot(h,v)
+x <- rnorm(z, mu, std)
+range(x);length(x)
+x[is.nan(x)]<-0
+hist(x, probability=TRUE)
+xx <- seq(min(x), max(x), length=32707)
+lines(xx, dnorm(xx,mu, std),col="pink")
+
+
+
+
+
+
+
+
 
 
 
