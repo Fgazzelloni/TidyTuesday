@@ -230,6 +230,8 @@ third<- ggplot()+
 
 fourth <- parks%>%
   filter(rank<=10)%>%
+  mutate(city=case_when(city=="Washington, DC"~"Washington, D.C.",
+                                 TRUE~city))%>%
   count(city)%>%
   ggplot(aes(label=city,color=city))+
 geom_text_wordcloud(family="Montserrat") +
