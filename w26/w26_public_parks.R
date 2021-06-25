@@ -22,7 +22,7 @@ library(extrafont)
 library(showtext)
 #font_families_google()
 font_add_google("Montserrat","Montserrat")
-showtext.auto()#enable = FALSE)
+showtext.auto(enable = TRUE)
 
 library(RColorBrewer)
 library(ggwordcloud)
