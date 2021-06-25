@@ -22,7 +22,7 @@ library(extrafont)
 library(showtext)
 #font_families_google()
 font_add_google("Montserrat","Montserrat")
-showtext.auto(enable = FALSE)
+showtext.auto()#enable = FALSE)
 
 library(RColorBrewer)
 library(ggwordcloud)
@@ -134,12 +134,12 @@ amenities_per_year <-minneapolis%>%
            "Playground"="playground_points","Recreation and senior centers"="rec_sr_points",
            "Splashground"="splashground_points","Restroom"="restroom_points"))%>%
     janitor::clean_names()%>%
-  mutate(basketball=basketball*10000/10000,
-         dogpark=dogpark*100000/10000,
-         playground=playground*10000/10000,
-         recreation_and_senior_centers=recreation_and_senior_centers*20000/10000,
-         restroom=restroom*100000/10000,
-         splashground=splashground*100000/10000)%>%
+  mutate(basketball=basketball/10000*10000,
+         dogpark=dogpark/100000*10000,
+         playground=playground/10000*10000,
+         recreation_and_senior_centers=recreation_and_senior_centers/20000*10000,
+         restroom=restroom/100000*10000,
+         splashground=splashground/100000*10000)%>%
     #select(8:13)%>%
   pivot_longer(cols=c(8:13),names_to="data_points",values_to="points")%>%
   select(year,data_points,points,amenities_points)%>%
