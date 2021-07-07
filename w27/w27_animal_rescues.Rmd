@@ -1,0 +1,233 @@
+# Week 27 TidyTuesday Animal Rescues
+
+more reading:
+[Animal rescues by London fire brigade rise 20% in pandemic year](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-29/readme.md#:~:text=Animal%20rescues%20by%20London%20fire%20brigade%20rise%2020%25%20in%20pandemic%20year)
+- [TrackReconstruction](https://cran.r-project.org/web/packages/TrackReconstruction/TrackReconstruction.pdf)
+- [animate bar plot](https://stackoverflow.com/questions/61150926/r-label-with-commas-but-no-decimals)
+- [composition of plots](http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/81-ggplot2-easy-way-to-mix-multiple-graphs-on-the-same-page/)
+- [annotate](https://rpkgs.datanovia.com/ggpubr/reference/annotate_figure.html)
+
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+library(ggthemes)
+library(ggalt)
+library(gganimate)
+library(ggdist)
+library(ggExtra)
+library(ggtext)
+```
+
+
+```{r load_data}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 27)
+animal_rescues <- tuesdata$animal_rescues
+
+head(animal_rescues)
+```
+```{r}
+dim(animal_rescues)
+```
+
+```{r}
+names(animal_rescues)
+```
+
+
+```{r}
+animal_rescues_small <- animal_rescues %>% 
+  select(date_time_of_call,cal_year,incident_notional_cost,animal_group_parent,
+         special_service_type,ward,borough,stn_ground_name,latitude,longitude) %>%
+  mutate(borough=tolower(borough)) %>% 
+  drop_na() %>%
+  mutate(animal_group_parent=case_when(stringr::str_detect(animal_group_parent,"^Unknown") ~ "Unknown",
+                                       TRUE ~ animal_group_parent),
+         cal_year=as.factor(cal_year) ,
+         incident_notional_cost=ifelse(incident_notional_cost=="NULL",0,incident_notional_cost),
+         incident_notional_cost=as.numeric(incident_notional_cost),
+         date_time_of_call=as.Date(date_time_of_call,"%d/%m/%Y")) %>%
+  rename(date=date_time_of_call,year=cal_year) %>%
+  mutate(month=lubridate::month(date),
+         day=lubridate::day(date)) %>%
+  complete(date = full_seq(date, 1)) %>%
+  mutate(incident_notional_cost_full = round(spline(x = date, y = incident_notional_cost, xout = date)$y))
+  
+
+str(animal_rescues_small)
+
+animal_rescues_small %>% count(incident_notional_cost) %>% arrange(-n) #desc(incident_notional_cost))
+```
+
+```{r}
+DataExplorer::profile_missing(animal_rescues_small)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+calls <- animal_rescues_small%>%group_by(year)%>%count(year)%>%arrange(-n)
+
+
+bar_plot <- ggplot(data=animal_rescues_small%>%drop_na(),aes(x=year,y=borough)) + 
+  geom_col(aes(group=borough,fill=borough,color=borough)) +
+  geom_text(data=calls, aes(x= year, y=n, label=n), hjust=0.5,
+           position = position_stack(vjust = 18),fontface = "bold"
+            )+
+  guides(color="none",fill="none") +
+  labs(title="Numbers of call by Year to the London Fire Brigate for Animal Rescues",
+       x="Year",y="by London Borough") + 
+  ggthemes::theme_calc() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_text(size=8),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.x = element_line(size=2,color="pink"),
+        plot.title = element_text(face="bold",size=11),
+        plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+bar_plot
+```
+
+
+```{r}
+box_plot <- animal_rescues_small %>%  drop_na() %>% # count(year)
+  filter(incident_notional_cost<2000) %>%
+  ggplot(aes(x=fct_reorder(animal_group_parent, incident_notional_cost),y=incident_notional_cost, group=animal_group_parent)) +
+  geom_boxplot(aes(color=animal_group_parent),size=0.5,alpha=0.4) +
+  scale_y_continuous(labels = scales::comma) +
+  guides(color="none") +
+  labs(title="LFB Animal Rescues - Incident notional cost 2009 - 2021",
+       color="Animal group parent", y="Cost value £",x="") +
+  coord_flip() +
+  ggthemes::theme_calc() +
+  theme(axis.text.y = element_text(size=8,angle=0),
+        axis.text.x = element_text(size=8,angle=0),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.x = element_line(size=2,color="pink"),
+        axis.ticks.y = element_line(size=2,color="pink"),
+        panel.grid.major.y = element_line(size=0.2),
+        plot.title = element_text(face="bold",size=11),
+        plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+box_plot
+```
+
+
+
+
+
+```{r message=FALSE, warning=FALSE}
+smoth_line <-animal_rescues_small%>%
+  group_by(month)%>%
+  summarise(med_val=median(incident_notional_cost))%>%
+  ungroup() 
+
+
+
+cost_month_plot <- ggplot(data=smoth_line,aes(x=month,y=med_val))+
+  geom_point(shape=21,aes(fill=month)) +
+  geom_line(linetype = 3)+
+  geom_smooth(size=0.3,fill="pink") +
+  geom_boxplot(data=subset(animal_rescues_small,incident_notional_cost<500 & incident_notional_cost>200),
+               aes(x=month,y=incident_notional_cost,group=month,color=month),fill=NA) +
+  geom_text(aes(label=med_val),vjust = -1) +
+  scale_x_discrete(limits =seq(1,12,1), labels=c("Jan","Feb","Mar","Apr","May",
+                                                 "Jun","Jul","Aug","Sep","Oct","Nov","Dec"))+
+  guides(fill="none",color="none") + 
+  labs(title="Cost of incident by month (2009 - 2021)",
+       x="Month",y="Median value £") +
+  ggthemes::theme_calc() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_text(size=8),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_line(size=2,color="pink"),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_line(size=0.1),
+        plot.title = element_text(face="bold",size=11),
+        plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+cost_month_plot
+```
+
+
+```{r message=FALSE, warning=FALSE}
+smoth_line_yr <-animal_rescues_small%>%#count(year)
+  mutate(year=as.numeric(year))%>% #count(year)
+  group_by(year)%>%
+  summarise(tot_val=sum(incident_notional_cost_full))%>%
+  ungroup() 
+
+
+
+cost_yr_plot <- ggplot(data=smoth_line_yr,aes(x=year,y=tot_val))+
+  geom_point(shape=21,aes(fill=year)) +
+  geom_line(linetype = 3)+
+  geom_smooth(size=0.3,fill="pink") +
+  geom_text(aes(label=scales::comma(tot_val)),vjust = -1.5,size=3) +
+  scale_x_discrete(limits =seq(1,13,1),labels=seq(2009,2021,1))+
+  guides(fill="none",color="none") + 
+  labs(title="Annual cost of incidents by Year (2009 - 2021)",
+       y="Annual cost - median value £",x="Year") +
+  ggthemes::theme_calc() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_text(size=8),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_line(color="pink",size=1),
+        panel.grid.major.x = element_line(size=0.1),
+        panel.grid.major.y = element_blank(),
+        plot.title = element_text(face="bold",size=11),
+        plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+cost_yr_plot  
+```
+
+
+
+```{r fig.align="center", message=FALSE, warning=FALSE, ut.width="100%"}
+
+p1 <- ggarrange(bar_plot, box_plot + 
+                font("x.text", size = 9),
+                ncol = 1, nrow = 2)
+p2 <- ggarrange(cost_month_plot, cost_yr_plot +
+                font("x.text", size = 9),
+                ncol = 1, nrow = 2)
+graphics<- ggarrange(p1, p2, ncol = 2, nrow = 1)
+
+
+
+
+final_plot <- annotate_figure(graphics,
+               top = text_grob("Animal rescues by London fire brigade rise 20% in pandemic year", 
+                               color = c("#FF34B3", "#FFFFFF", "#FFFFFF"), face = "bold", size = 14),
+               bottom = text_grob("DataViz: @fgazzelloni DataSource: \n TidyTuesday and Animal Rescues - London.gov - The Guardian - week27",
+                                  color = "blue",
+                                  hjust = 1, x = 1, face = "italic", size = 10),
+               left = text_grob("Last year 337 animals were helped compared with 269 in 2019", color = c("#BA55D3", "#FFFFFF", "#FFFFFF"), rot = 90,size=10),
+               right = text_grob(bquote("The LFB calculates the average cost of each rescue to be £346"), rot = 90,size=10),
+               fig.lab = "TidyTuesday week27", fig.lab.face = "bold"
+)
+
+final_plot
+```
+
+
+
+```{r}
+###################### SAVING ############################
+
+
+ragg::agg_png(here::here("w27","w27_animals.png"),
+              res = 320, width = 14, height = 8, units = "in")
+final_plot
+
+dev.off()
+
+##################################################
+
+```
+
+
+
+
+
