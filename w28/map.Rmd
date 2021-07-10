@@ -1,0 +1,133 @@
+---
+title: "w28_independence_days"
+author: "Federica Gazzelloni"
+date: "10/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 28)
+
+holidays <- tuesdata$holidays
+names(holidays)
+```
+
+
+```{r}
+library(maps)
+library(sf)
+
+maps::map("world")
+```
+
+```{r}
+world <- sf::st_as_sf(map("world",plot=FALSE,fill=TRUE))
+world <- cbind(world, sf::st_coordinates(sf::st_centroid(world)))
+names(world)
+map("world")
+```
+
+```{r}
+
+holidays_map <- holidays %>%
+  filter(str_detect(name_of_holiday,"(?i)inde"))%>%
+  left_join(world, by=c("country"="ID")) %>%
+  select(country,date_parsed,name_of_holiday,independence_from,X,Y)%>%
+  mutate(country=as.factor(country))
+  
+```
+
+
+```{r}
+library(showtext)
+library(extrafont)
+showtext.auto(enable=FALSE)
+fonts()
+loadfonts()
+my_font <- "Impact"
+font_add(family="Impact")
+font_families()
+```
+
+
+
+
+```{r}
+mapdata <- ggplot2::map_data("world") %>%
+  filter(!region==c("Antartica","Greenland","French Southern and Antartic Lands")) %>%
+  mutate(region=recode(region, 
+                       USA="United States",
+                       UK="United Kingdom"))
+           
+
+
+
+final_plot <- ggplot() +
+  geom_map(data=mapdata,map = mapdata,aes(map_id=region),fill= "#F0F8FF",color= "#FAEBD7")+
+  geom_point(data=world,aes(x=X,y=Y),size=1,color="grey",alpha=0.3)+
+  geom_point(data=holidays_map,aes(x=X,y=Y),size=1,color="black")+
+  geom_text(data=holidays_map,aes(x=X,y=Y,label=country),family="sans",
+                            check_overlap = TRUE,size=1.5,color="#363636",hjust=1.2,vjust=0.2)+ #
+  geom_text(data=holidays_map,aes(x=X,y=Y,label=date_parsed),family="sans",
+            check_overlap = TRUE,size=1.2,color="#CD1076",vjust=1.5,hjust=1.2)+
+  expand_limits(x=mapdata$long,y=mapdata$lat)+
+  coord_map(projection = "mercator",xlim=c(-180,180)) +
+  labs(title="Date parsed: Independent Days celebrating Countries",
+       caption= "DataViz: @fgazzelloni, DataSource: International Independence Days,	Wikipedia,WorldAtlas.com - #TidyTuesday w28")
+  guides(fill="none") +
+  ggthemes::theme_map()
+
+```
+
+
+
+
+```{r}
+###################### SAVING ############################
+
+
+ragg::agg_png(here::here("w28","w28_independence_days.png"),
+              res = 320, width = 14, height = 8, units = "in")
+final_plot
+
+dev.off()
+
+##################################################
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
