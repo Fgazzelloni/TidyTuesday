@@ -10,12 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 ```
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 tuesdata <- tidytuesdayR::tt_load(2021, week = 28)
 
 holidays <- tuesdata$holidays
@@ -33,18 +33,14 @@ maps::map("world")
 ```{r}
 world <- sf::st_as_sf(map("world",plot=FALSE,fill=TRUE))
 world <- cbind(world, sf::st_coordinates(sf::st_centroid(world)))
-names(world)
-map("world")
 ```
 
 ```{r}
-
 holidays_map <- holidays %>%
   filter(str_detect(name_of_holiday,"(?i)inde"))%>%
   left_join(world, by=c("country"="ID")) %>%
   select(country,date_parsed,name_of_holiday,independence_from,X,Y)%>%
   mutate(country=as.factor(country))
-  
 ```
 
 
@@ -52,17 +48,13 @@ holidays_map <- holidays %>%
 library(showtext)
 library(extrafont)
 showtext.auto(enable=FALSE)
-fonts()
-loadfonts()
-my_font <- "Impact"
-font_add(family="Impact")
-font_families()
+
 ```
 
+"#EEE9E9" 
 
 
-
-```{r}
+```{r message=FALSE, warning=FALSE}
 mapdata <- ggplot2::map_data("world") %>%
   filter(!region==c("Antartica","Greenland","French Southern and Antartic Lands")) %>%
   mutate(region=recode(region, 
@@ -70,23 +62,29 @@ mapdata <- ggplot2::map_data("world") %>%
                        UK="United Kingdom"))
            
 
-
-
 final_plot <- ggplot() +
   geom_map(data=mapdata,map = mapdata,aes(map_id=region),fill= "#F0F8FF",color= "#FAEBD7")+
   geom_point(data=world,aes(x=X,y=Y),size=1,color="grey",alpha=0.3)+
-  geom_point(data=holidays_map,aes(x=X,y=Y),size=1,color="black")+
-  geom_text(data=holidays_map,aes(x=X,y=Y,label=country),family="sans",
-                            check_overlap = TRUE,size=1.5,color="#363636",hjust=1.2,vjust=0.2)+ #
-  geom_text(data=holidays_map,aes(x=X,y=Y,label=date_parsed),family="sans",
-            check_overlap = TRUE,size=1.2,color="#CD1076",vjust=1.5,hjust=1.2)+
+  geom_point(data=holidays_map,aes(x=X,y=Y),size=0.5,color="black")+
+  geom_text(data=holidays_map,aes(x=X,y=Y,label=country),family="Andalus",
+                            check_overlap = TRUE,size=1.5,color="#363636",hjust=0,vjust=0)+ #
+  geom_text(data=holidays_map,aes(x=X,y=Y,label=date_parsed),
+            family="Andalus", check_overlap = TRUE,size=0.8,
+            color="#CD1076",vjust=0.8,hjust=-1)+
   expand_limits(x=mapdata$long,y=mapdata$lat)+
   coord_map(projection = "mercator",xlim=c(-180,180)) +
   labs(title="Date parsed: Independent Days celebrating Countries",
-       caption= "DataViz: @fgazzelloni, DataSource: International Independence Days,	Wikipedia,WorldAtlas.com - #TidyTuesday w28")
+       caption= "DataViz: @fgazzelloni, DataSource: International Independence Days,	Wikipedia,WorldAtlas.com - #TidyTuesday w28")+
   guides(fill="none") +
-  ggthemes::theme_map()
+  ggthemes::theme_map()+
+    theme(axis.text = element_blank(),
+          plot.background = element_rect(fill="#C5E5F0",color="#E0EEEE"),
+          plot.title = element_text(color="#363636",family="Andalus",size=18,face="bold"),
+          plot.caption = element_text(size=10))
 
+
+
+final_plot
 ```
 
 
@@ -105,9 +103,6 @@ dev.off()
 ##################################################
 
 ```
-
-
-
 
 
 
