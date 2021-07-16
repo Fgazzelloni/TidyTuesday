@@ -1,0 +1,222 @@
+
+---
+title: "Scoobydoo"
+author: "FG"
+date: "16 July 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+- [scooby doo font](https://fonts2u.com/scooby-doo.font)
+- [fonts](https://www.r-bloggers.com/2019/03/adding-custom-fonts-to-ggplot-in-r/)
+
+```{r message=FALSE, warning=FALSE}
+library(gistfo)
+library(carbonate)
+
+library(tidyverse)
+library(ggthemes)
+library(ggtext)
+library(viridis)
+library(extrafont)
+library(patchwork)
+library(cowplot)
+library(ggpubr)
+library(png)
+library(grid)
+library(magick)
+```
+
+```{r message=FALSE, warning=FALSE}
+
+tuesdata <- tidytuesdayR::tt_load(2021, week = 29)
+scoobydoo <- tuesdata$scoobydoo
+head(scoobydoo)
+
+```
+
+
+
+```{r}
+scoobydoo_long <- scoobydoo%>%
+select(-imdb,-engagement,-run_time,-trap_work_first,-c(if_it_wasnt_for:door_gag),
+-c(jeepers:rooby_rooby_roo),-c(fred_va:scooby_va),-c(split_up:set_a_trap))%>%
+mutate(caught_other=as.character(caught_other),
+caught_not=as.character(caught_not),
+unmask_other=as.character(unmask_other))%>%
+pivot_longer(cols=contains("caught"),names_to="caught",values_to="caught_value")%>%
+pivot_longer(cols=contains("captured"),names_to="captured",values_to="captured_value")%>%
+pivot_longer(cols=contains("unmask"),names_to="unmask",values_to="unmask_value")%>%
+pivot_longer(cols=contains("snack"),names_to="snack",values_to="snack_value")%>%
+pivot_longer(cols=c(non_suspect,arrested),names_to="investigate",values_to="investigate_value")%>%
+pivot_longer(cols=c(batman:blue_falcon),names_to="super_hero",values_to="super_hero_value")
+
+
+head(scoobydoo_long)
+```
+
+```{r}
+names(scoobydoo_long)
+```
+
+```{r}
+dim(scoobydoo_long)
+```
+
+```{r}
+scoobydoo_long %>% 
+  select(date_aired,caught,caught_value) %>%
+  mutate(year=lubridate::year(date_aired)) %>%
+  filter(caught_value=="TRUE") %>%
+  ggplot(aes(x=(year/1969)/100000,y=factor(caught),group=caught)) +
+  geom_col(aes(fill=caught)) +
+  guides(fill="none") + 
+  labs(title="Who caught more within the years?") +
+  theme_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle=0))
+
+```
+
+
+Plotting final:
+```{r message=FALSE, warning=FALSE}
+scooby_family <- "Scooby Doo"
+
+colors <- c("Fred"="#0000CD",
+            "Scooby"="#8B3E2F",
+            "Shaggy"="#228B22",
+            "Daphnie"="#FFD700",
+            "Velma"="#FF7F00")
+
+caught <- scoobydoo_long %>% 
+  select(date_aired,caught,caught_value) %>%
+  mutate(year=lubridate::year(date_aired)) %>%
+  filter(caught_value=="TRUE",year=="1969") %>%
+  ggplot(aes(caught,fill=caught)) +
+  geom_histogram(aes(y = after_stat(count / max(count))),stat="count") + 
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(labels=c("Fred","Scooby", "Shaggy")) +
+  scale_fill_manual(values=c("#0000CD","#8B3E2F","#228B22")) +
+  guides(fill="none") +
+  labs(title="Caught",y="") +
+  theme_fivethirtyeight() +
+  theme(text=element_text(size=16,  family=scooby_family),
+        axis.text.x = element_text(size=10),
+        axis.title.x = element_blank())
+
+captured <- scoobydoo_long %>% 
+  select(date_aired,captured,captured_value) %>%
+  mutate(year=lubridate::year(date_aired)) %>%
+  filter(captured_value=="TRUE",year=="1969") %>%
+  ggplot(aes(captured,fill=captured)) +
+  geom_histogram(aes(y = after_stat(count / max(count))),stat="count") + 
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(labels=c("Daphnie","Fred","Scooby", "Shaggy","Velma")) +
+  scale_fill_manual(values=c("#FFD700", "#0000CD","#8B3E2F","#228B22","#FF7F00")) +
+  guides(fill="none") +
+  labs(title="Captured") +
+  theme_fivethirtyeight() +
+  theme(text=element_text(size=16,  family=scooby_family),
+        axis.text.x = element_text(size=10),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank())
+
+unmask <- scoobydoo_long %>% 
+  select(date_aired,unmask,unmask_value) %>%
+  mutate(year=lubridate::year(date_aired)) %>%
+  filter(unmask_value=="TRUE",year=="1969") %>%
+  ggplot(aes(unmask,fill=unmask)) +
+  geom_histogram(aes(y = after_stat(count / max(count))),stat="count") + 
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(labels=c("Fred","Scooby", "Shaggy","Velma")) +
+  scale_fill_manual(values=c("#0000CD","#8B3E2F","#228B22","#FF7F00")) +
+  guides(fill="none") +
+  labs(title="Unmask",y="") +
+  theme_fivethirtyeight() +
+  theme(text=element_text(size=16,  family=scooby_family),
+        axis.text.x = element_text(size=10),
+        axis.title.x = element_blank() )
+
+snack <- scoobydoo_long %>% 
+  select(date_aired,snack,snack_value) %>%
+  mutate(year=lubridate::year(date_aired)) %>%
+  filter(snack_value=="TRUE",year=="1969") %>%
+  ggplot(aes(snack,fill=snack)) +
+  geom_histogram(aes(y = after_stat(count / max(count))),stat="count") + 
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(labels=c("Daphnie","Fred","Shaggy","Velma")) +
+   scale_fill_manual(values=c("#FFD700", "#0000CD","#228B22","#FF7F00")) +
+  guides(fill="none") +
+  labs(title="Snack") +
+  theme_fivethirtyeight() +
+  theme(text=element_text(size=16,  family=scooby_family),
+        axis.text.x = element_text(size=10),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank())
+
+require(patchwork)
+action_plot <- caught+captured+unmask+snack
+
+img <- png::readPNG('all5.png')
+
+ lealeft <- ggplot()+
+  theme_void() +
+  theme(plot.background = element_rect(fill = "#87cf80")) + 
+  background_image(img) +
+  action_plot 
+ 
+
+graphics <- ggarrange(lealeft) 
+
+final_plot <- annotate_figure(graphics,
+               top = text_grob("Scooby-Doo 1969: Percent of ", 
+                               color = c("#778899"), face = "bold", size = 35,family="Scooby Doo"),
+               bottom = text_grob("DataViz: @fgazzelloni DataSource: \n TidyTuesday week29, Scooby-Doo,Kaggle,ScoobyPedia",
+                                  color = "#6C7B8B",family="Scooby Doo",
+                                  hjust = 0.5, x = 0.5, face = "bold.italic", size = 10),
+               left = text_grob("", color = c("#778899"), rot = 90,size=10),
+               right = text_grob(bquote(""), color=c("#778899"),rot = 90,size=10),
+               fig.lab = "TidyTuesday week29", fig.lab.face = "bold.italic",fig.lab.size=8,
+               fig.lab.pos="bottom.right"
+)
+
+final_plot <- final_plot +
+  annotate(geom = "text", label="Scooby-Doo and Guess Who?",x = 0.24, y = 0.87, 
+           colour = "#BF3EFF", size = 9,family=scooby_family) +
+  annotate(geom = "text", label="Velma",x = 0.10, y = 0.71, colour = "#FF7F00", size = 7,family=scooby_family) +
+  annotate(geom = "text", label="Shaggy",x = 0.13, y = 0.82, colour = "#228B22", size = 7,family=scooby_family) +
+  annotate(geom = "text", label="Scooby",x = 0.23, y = 0.67, colour = "#8B3E2F", size = 7,family=scooby_family) +
+  annotate(geom = "text", label="Fred",x = 0.33, y = 0.78, colour = "#0000CD", size = 7,family=scooby_family) +
+annotate(geom = "text", label="Daphnie",x = 0.40, y = 0.72, colour = "#FFD700", size = 7,family=scooby_family) 
+
+  
+require(cowplot)
+
+img2 <- png::readPNG('car_all5.png')
+img3 <- png::readPNG('scooby.png')
+
+
+final <- ggdraw() +
+  draw_image(img2,  x = 0.4, y = 0.41, scale = .2) +
+  draw_image(img3,  x = -0.41, y = 0.45, scale = .15) +
+  draw_plot(final_plot)
+final
+  
+```
+
+Saving:
+```{r}
+ragg::agg_png(here::here("w29", "w29_scoobidoo.png"),
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+
+```
+
+
+
+
