@@ -1,0 +1,357 @@
+---
+title: "drought"
+author: "FG"
+date: "7/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+Resources for this week:
+
+- [rfordatascience](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-20/readme.md)
+- [ComprehensiveStatistics](https://droughtmonitor.unl.edu/DmData/DataDownload/ComprehensiveStatistics.aspx)
+- [NYT](https://www.nytimes.com/interactive/2021/06/11/climate/california-western-drought-map.html)
+- [CNN](https://edition.cnn.com/2021/06/17/weather/west-california-drought-maps/index.html)
+- [Drought Classification](https://droughtmonitor.unl.edu/About/AbouttheData/DroughtClassification.aspx)
+- [drought Monitor](https://droughtmonitor.unl.edu/ConditionsOutlooks/CurrentConditions.aspx)
+
+Facts 2001 to 2021:
+
+- Six states are now entirely in drought conditions
+- The drought has nearly doubled in size from this time last year
+- Around 25% of the country was in drought conditions in July 2020
+- More than 94% of the West is in drought
+- More than 60% of the region is in 'extreme' or 'exceptional' drought
+- Six states completely in drought conditions; California, Oregon, Nevada, Utah, Idaho and North Dakota
+
+Data limitations:
+
+- statistics are limited to areas based on counties
+- population changes over time
+- population is distributed evenly across each county
+
+- [limitation](https://droughtmonitor.unl.edu/About/AbouttheData/PopulationStatistics.aspx)
+
+Caption: The U.S. Drought Monitor is jointly produced by the National Drought Mitigation Center at the University of Nebraska-Lincoln, the United States Department of Agriculture, and the National Oceanic and Atmospheric Administration. Map courtesy of NDMC.
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 30)
+
+drought <- tuesdata$drought
+```
+
+```{r}
+glimpse(drought)
+```
+
+```{r}
+drought%>%count(drought_lvl)
+```
+
+Intensity and Impacts
+```{r}
+intensity_impacts<- c("D0"="Abnormally Dry",
+                      "D1"="Moderate Drought",
+                      "D2"="Severe Drought",
+                      "D3"= "Extreme Drought",
+                      "D4"="Exceptional Drought")
+```
+
+
+```{r}
+DataExplorer::profile_missing(drought)
+```
+
+```{r}
+drought_short <- drought %>%
+  dplyr::select(-map_date,-stat_fmt) %>%
+  filter(!drought_lvl=="None",!area_pct==0)
+
+drought_short
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(sf)
+library(raster)
+library(spData)
+library(spDataLarge)
+
+library(maps)
+library(viridis)
+library(ggthemes)
+```
+
+```{r}
+us_county_map <- map_data("county")
+
+county_plot<-ggplot()+
+  geom_polygon(data=us_county_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "lightblue") +
+  theme_map()
+
+county_plot
+```
+
+
+```{r}
+my_states <- drought_short%>%count(state_abb)
+```
+
+
+
+```{r}
+us_state_map <- map_data("state")
+
+state_plot<-ggplot()+
+  geom_polygon(data=us_state_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "lightblue") +
+  theme_map()
+
+state_plot
+```
+
+
+
+```{r}
+us_plot<-ggplot()+
+  geom_polygon(data=us_county_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "lightblue") +
+   geom_polygon(data=us_state_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "pink") +
+  theme_map()
+
+us_plot
+```
+
+
+
+```{r}
+library(zipcodeR)
+zipcodeR::download_zip_data()
+
+geo_codes<- zipcodeR::search_state(drought_short$state_abb)%>%
+  dplyr::select(major_city,county,state,lat,lng,
+         population,population_density,
+         land_area_in_sqmi,water_area_in_sqmi,
+         housing_units,occupied_housing_units,
+         median_home_value,median_household_income) %>%
+  drop_na()
+
+geo_codes
+```
+
+
+
+```{r}
+my_geo_codes_df<-geo_codes%>%
+  dplyr::select(state,lat,lng)
+  
+
+drought_short_map <- drought_short %>%
+  arrange(valid_start)%>%
+  mutate(year=lubridate::year(valid_start),
+         month=lubridate::month(valid_start))%>%
+  filter(str_detect(valid_start,"2021")) %>%
+  #filter(month==c(1,2,3)) %>%
+  group_by(month,state_abb,drought_lvl) %>%
+  summarize(med_area_pct=round(median(area_pct),2))%>%
+  ungroup() %>%
+  filter(!med_area_pct==0) %>%
+  left_join(my_geo_codes_df,by=c("state_abb"="state")) %>%
+  mutate(month = month.name[month])
+  
+drought_short_map
+```
+
+
+
+```{r}
+library(extrafont)
+loadfonts()
+fonts()
+
+droughts_family <- "Roboto Condensed"
+```
+
+
+```{r}
+drought_plot <- ggplot() +
+  geom_point(data=subset(drought_short_map,lat>25&lat<50),
+                         aes(x=lng,y=lat,color=drought_lvl),
+             alpha=0.5,size=.4) +
+  geom_polygon(data=us_county_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "lightblue",size=0.2) +
+   geom_polygon(data=us_state_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "pink",size=0.4) +
+  facet_wrap(~factor(month, levels=c('January','February','March','April',
+                                     'May','June','July'))) +
+  labs(title="",
+       subtitle="",
+       caption="US Droughts map: available values by County\n Jan to July 2021",
+       #tag = "Jan to July 2021",
+       color="Level") +
+  scale_color_viridis(labels = intensity_impacts,discrete = TRUE) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  ggthemes::theme_map() +
+  theme(legend.position = "top",
+        legend.title = element_text(family = droughts_family),
+        legend.text = element_text(size=8,family =droughts_family),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.key = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(family = droughts_family),
+        plot.title =element_text(size=15,face="bold",family =droughts_family,color="black"),
+        plot.subtitle =element_text(size=12,face="bold",family =droughts_family),
+        plot.caption =element_text(size=9,family =droughts_family,hjust = 0),
+        #plot.tag = element_text(size=9,face="bold",family =droughts_family,hjust = 0),
+        plot.caption.position = "panel",
+        plot.title.position = "panel")
+  
+
+
+# drought_plot 
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidymodels)
+tidymodels_prefer()
+
+
+cooked_drought <- recipe(drought_lvl ~ med_area_pct+month + lat+lng +state_abb,drought_short_map) %>%
+  prep()%>%
+  bake(new_data=NULL)
+
+cooked_drought
+```
+
+
+```{r}
+cooked_drought_plot <- cooked_drought%>%
+  group_by(drought_lvl,month) %>%
+  summarise(med_med_area_pct=median(med_area_pct)) %>%
+  mutate(month_f= case_when(month=="January"~1,
+                            month=="February"~2,
+                            month=="March"~3,
+                            month=="April"~4,
+                            month=="May"~5,
+                            month=="June"~6,
+                            month=="July"~7)) %>%
+
+  ggplot(aes(x=month_f,y=med_med_area_pct,fill=month)) +
+  geom_col()+
+  geom_text(aes(label=month),nudge_y = 1.5,size=1.5,family = droughts_family) +
+  geom_text(aes(label=med_med_area_pct),nudge_y = -1.5,size=1.5,color="white") +
+  facet_wrap(~factor(drought_lvl,labels = intensity_impacts),
+             nrow = 1,ncol = 5,strip.position="bottom",
+             scales = "fixed")+
+  scale_fill_viridis(discrete = TRUE) +
+  labs(y="",
+       caption="Forecasted Droughts affected area pct median value by first 7 months of the year")+
+  theme_void()+
+  theme(legend.position = "none",
+        plot.caption = element_text(family = droughts_family),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank(),
+        strip.placement = "inside",
+        strip.text = element_text(family = droughts_family,size=6),
+        plot.background = element_blank())
+
+
+  
+# cooked_drought_plot
+```
+
+
+```{r}
+library(cowplot)
+```
+
+
+```{r}
+inset.plot <- cooked_drought_plot + theme(legend.position = "none")
+
+double_plot <- ggdraw() +
+  draw_plot(drought_plot,width = 1, height = 1) +
+  draw_plot(inset.plot, x = 0.39, y = .035, width = .55, height = .25)
+
+# double_plot
+```
+
+```{r}
+library(ggpubr)
+library(ggimage)
+```
+
+
+```{r}
+graphics <- ggarrange(double_plot) 
+
+annotation_plot <- annotate_figure(graphics,
+               top = text_grob("US droughts monitor condition outlook: ",color =c("#36648B", "#607B8B", "#668B8B"), 
+                               face = "bold", size = 30,family=droughts_family),
+               bottom = text_grob("DataViz: @fgazzelloni DataSource: \n TidyTuesday week30, US Droughts,Drought Monitor,NYTimes & CNN",
+                                  color = c("#36648B", "#607B8B", "#668B8B"),family=droughts_family,
+                                  hjust = 0.5, x = 0.5, face = "bold.italic", size = 10),
+               left = text_grob("", color = c("#778899"), rot = 90,size=1),
+               right = text_grob(bquote(""), color=c("#778899"),rot = 90,size=1),
+               fig.lab = "TidyTuesday week30\n", fig.lab.face = "bold.italic",fig.lab.size=7,
+               fig.lab.pos="bottom.right"
+)
+
+final_plot <- annotation_plot +
+  annotate(geom = "text", label="map approximates drought-related impacts",x = 0.7, y = 0.87, 
+           colour = "#BF3EFF", size = 8,family=droughts_family) 
+  
+
+# final_plot
+```
+
+
+```{r}
+img <- png::readPNG('NDMC-logo-usdm-opt.png')
+img1 <- png::readPNG('DOC-logo-usdm.png')
+img2 <- png::readPNG('NOAA-logo-usdm.png')
+img3 <- png::readPNG('USDA-logo-usdm-opt.png')
+```
+
+
+
+```{r width=100}
+final <- ggdraw() +
+  draw_image(img,  x = -0.45, y = 0.44, scale = .10) +
+  draw_image(img1,  x = -0.38, y = 0.44, scale = .10) +
+  draw_image(img2,  x = 0.33, y = 0.44, scale = .10) +
+  draw_image(img3,  x = 0.42, y = 0.44, scale = .10) +
+  draw_plot(final_plot)
+
+# final
+```
+
+
+
+Saving:
+```{r}
+ragg::agg_png(here::here("w30", "w30_drought.png"),
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+
+```
+
+
+
+
+
+
