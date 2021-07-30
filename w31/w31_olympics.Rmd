@@ -1,0 +1,353 @@
+---
+title: "w31_olympics"
+author: "FG"
+date: "27 July 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+35 Years of Olympic Games
+
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(countrycode)
+library(ggflags)
+library(ggthemes)
+library(hrbrthemes)
+
+
+options(scipen = 999)
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 31)
+
+olympics <- tuesdata$olympics
+regions <- tuesdata$regions
+```
+
+```{r}
+#glimpse(olympics)
+```
+
+
+```{r}
+# View(olympics)
+```
+
+```{r}
+DataExplorer::profile_missing(olympics)
+```
+
+
+```{r}
+glimpse(regions)
+```
+
+```{r}
+DataExplorer::profile_missing(regions)
+```
+
+```{r}
+regions%>%filter(is.na(region))
+```
+
+
+```{r}
+regions <- regions%>%rename(noc="NOC")
+
+
+my_olympics <- olympics %>% 
+  inner_join(regions,by="noc") %>%
+  mutate(medal=replace_na(medal,"Absent")) %>%
+  filter(!is.na(region)) %>%
+  select(-notes,-name,-team,-event) %>% 
+  drop_na() 
+
+# DataExplorer::profile_missing(my_olympics)
+```
+
+
+```{r}
+skimr::skim_to_list(my_olympics)
+```
+
+
+
+Converting "region" vector into country code "iso2c" with {countrycodes} to be able to use {ggflags}
+
+some values were not matched unambiguously:  
+
+- Bolivia
+- Individual Olympic Athletes
+- Kosovo
+- Micronesia
+
+
+I could do a dataset with only "Individual Olympic Athletes" and eventually use it to add some info in a `geom_`
+
+```{r}
+IOA <- my_olympics %>% filter(region %in% "Individual Olympic Athletes" ) %>% count(sex)
+
+IOA
+```
+
+After a quick look at the "ambiguous_country_codes", just one is relevant with a "Gold medal", then will see how to use it.
+
+```{r}
+ambiguous_country_codes <- c("Boliva","Kosovo","Micronesia")
+
+kos_gold <- my_olympics %>% filter(!region %in% "Individual Olympic Athletes",
+                                   region %in% ambiguous_country_codes, 
+                                   medal=="Gold") 
+
+kos_gold
+```
+
+Update "my_olympics" with `countrycode()`:
+
+```{r}
+my_olympics <- my_olympics %>%
+  filter(!region %in% "Individual Olympic Athletes",
+         !region %in% ambiguous_country_codes) 
+```
+
+
+35 Years: 1896 to 2016
+
+```{r}
+my_olympics%>%count(year)
+```
+
+Age: 11 to 71 (61 different ages)
+
+```{r}
+my_olympics %>% count(age)
+```
+
+## Section Age & Sex
+
+```{r}
+age_sex_plot <- my_olympics %>% 
+  group_by(sex) %>%
+  summarize(age,height,weight,year) %>% # count(age)
+  ungroup() %>% 
+  ggplot(aes(x=factor(age),fill=factor(sex))) + 
+  geom_bar(position="stack") +
+  scale_fill_fivethirtyeight() +
+  labs(title="Distribution of age by sex",
+       subtitle="61 different age years form 11 to 71 years old gamers",
+       fill="Sex") + 
+  theme_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle=20),
+        legend.position = "bottom",
+        plot.title = element_text(size=16,vjust=-0.5),
+        panel.grid.major.x = element_blank())
+
+age_sex_plot
+```
+
+
+Composition of plots and background
+
+```{r message=FALSE, warning=FALSE}
+library(magick)
+library(ggimage)
+library(ggpubr)
+library(cowplot)
+library(extrafont)
+library(showtext)
+fonts()
+olympics_family<-"Roboto Condensed"
+#library(ggflags)
+library(countrycode)
+
+```
+
+
+
+```{r}
+olympics_plot <- ggplot() +
+  geom_blank() + 
+  theme_void() +
+  theme()
+
+
+img_olympics<-"olympics.png"
+
+plot <- ggbackground(age_sex_plot, img_olympics,alpha=.4, color="#CD919E")
+
+
+plot +
+  theme(plot.background = element_rect())#fill="#FFEFDB"))
+  
+```
+
+Then add a secon plot on the right corner
+
+
+## Section medals
+
+"At the 1968 Summer Olympics in Mexico City, 29 events in swimming were contested. There was a total of 468 participants from 51 countries competing. The United States dominated the competition, winning 52 of 87 possible medals. 15-year-old phenom Debbie Meyer from Maryland won three gold medals."
+
+source: [Swimming at the 1968 Summer Olympics](https://en.wikipedia.org/wiki/Swimming_at_the_1968_Summer_Olympics#:~:text=At%20the%201968%20Summer%20Olympics%20in%20Mexico%20City%2C%2029%20events,Maryland%20won%20three%20gold%20medals.)
+
+
+```{r}
+my_olympics_with_country_codes<- my_olympics%>%
+  mutate(country_code = countrycode(region, 
+            origin = 'country.name', 
+            destination = 'iso2c'),
+         country_code=tolower(country_code)) %>%
+  select(year,sport,medal,country_code) %>%
+  filter(medal=="Gold") %>%
+  count(year,sport,country_code) %>%
+  arrange(year) 
+  
+
+
+my_olympics_with_country_codes
+```
+
+```{r}
+my_favourites <- c("Athletics","Wrestling","Swimming","Shooting","Rowing",
+                   "Boxing","Canoeing","Cycling")
+
+
+my_favourite_sports <- my_olympics_with_country_codes%>%
+  filter(sport %in%my_favourites)
+```
+
+
+
+```{r}
+library(ggflags)
+```
+
+
+```{r}
+top_golden_sports <- ggplot(data=my_favourite_sports,
+       aes(x=factor(year),y=fct_reorder(sport,-year))) +
+  geom_point(shape = 21, colour = "gold", fill = NA, size = 7, stroke = 1) +
+  ggflags::geom_flag(aes(country=country_code), size=4.5) +
+  ggflags::scale_country() +
+  guides(country="none") +
+  labs(title="Top 8 Gold medal sport winners",
+       x="",y="") +
+  theme_fivethirtyeight()+
+  theme(axis.text.x = element_text(angle=90),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color="#CD919E"),
+        plot.title.position = "plot",
+        plot.background = element_blank(),
+        panel.background = element_blank())
+
+# top_golden_sports
+
+```
+
+
+```{r}
+#png("top_golden_sports.png")
+ggsave("top_golden_sports.png", width = 8, height = 6)
+
+print(top_golden_sports)
+dev.off()
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(cowplot)
+```
+
+
+
+```{r}
+img <- "top_golden_sports.png"
+
+inset.plot <- ggdraw() +
+  draw_image(img,  x = 0.22, y = -0.2,  scale = .70) 
+
+inset.plot <- inset.plot + theme(legend.position = "none",
+                                    plot.background = element_blank(),
+                                    panel.background = element_blank())
+inset.plot2 <- age_sex_plot + theme(legend.position = "none",
+                                    plot.background = element_blank(),
+                                    panel.background = element_blank())
+
+double_plot <- ggdraw() +
+  draw_plot(inset.plot2, x = 0, y = 0, width = 1, height = 1) +
+  draw_plot(inset.plot, x = -0.35, y = .18, width = 1.5, height = 0.9) 
+
+
+double_plot
+```
+
+
+```{r}
+img_olympics<-"olympics.png"
+plot <- ggbackground(double_plot, img_olympics,alpha=.2, color="#CD919E")
+
+
+plot +
+  theme(plot.background = element_rect(fill="#FFEFDB"))
+```
+
+
+
+
+```{r}
+graphics <- ggarrange(plot) 
+
+annotation_plot <- annotate_figure(graphics,
+               top = text_grob("Olympics outlook 1896 - 2016  ",color =c("#FF4040", "#FFFFFF", "#FFFFFF"), 
+                               face = "bold", size = 40,family=olympics_family),
+               bottom = text_grob("DataViz: @fgazzelloni DataSource: \n TidyTuesday week31, Olympic Medals, Kaggle, Financial Times & FiveThirtyEight",
+                                  color = c("black"),family=olympics_family,
+                                  hjust = 0.5, x = 0.5, face = "bold.italic", size = 10),
+               left = text_grob("", color = c("#778899"), rot = 90,size=1),
+               right = text_grob(bquote(""), color=c("#778899"),rot = 90,size=1),
+               fig.lab = "TidyTuesday week31\n", fig.lab.face = "bold.italic",fig.lab.size=7,
+               fig.lab.pos="bottom.right"
+)
+
+final_plot <- annotation_plot +
+  annotate(geom = "text", label="The historical dataset on the modern Olympic Games,\n including all the Games from Athens 1896 to Rio 2016",x = 0.7, y = 0.81, 
+           colour = "black", size = 6,family=olympics_family) 
+  
+
+final_plot
+```
+
+Attach the Olympic logo at the sides of the title
+
+```{r}
+img_olympics<-"olympics.png"
+
+final <- ggdraw() +
+  draw_image(img_olympics,  x = -0.35, y = 0.45, scale = .10) +
+  draw_image(img_olympics,  x = 0.32, y = 0.45, scale = .10) +
+  draw_plot(final_plot)
+
+
+```
+
+
+Saving:
+```{r}
+ragg::agg_png(here::here("w31", "w31_olympics.png"),
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+
+```
+
+
