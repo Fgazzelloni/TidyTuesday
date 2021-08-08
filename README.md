@@ -39,5 +39,5 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 29 | `2021-07-13` | [Scooby Doo](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-13/readme.md) | ![png](/w29/w29_scoobydoo.png)
 | 30 | `2021-07-20` | [US Droughts](data/2021/2021-07-20/readme.md) | ![png](/w30/w30_drought.png)
 | 31 | `2021-07-27` | [Olympic Medals](data/2021/2021-07-27/readme.md) | ![png](/w31/w31_olympics.png)
-| 32 | `2021-08-03` | [Paralympic Medals](data/2021/2021-08-03/readme.md) | ![png](/w32/w32_paralympic.png)
+| 32 | `2021-08-03` | [Paralympic Medals](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-03/readme.md) | ![png](/w32/w32_paralympic.png)
 
