@@ -34,7 +34,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 24 | `2021-06-08` | [Great Lakes Fish](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-08/readme.md) | ![png](/w24/w24_fisheries.png)
 | 25 | `2021-06-15` | [WEB Du Bois and Juneteenth](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-15/readme.md) |![png](/w25/w25_tweets.png)
 | 26 | `2021-06-22` | [Public Park Access](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-122/readme.md) | ![png](/w26/w26_parks.png)
-| 27 | `2021-06-29` | [Animal Rescues](data/2021/2021-06-29/readme.md) | ![png](/w27/w27_animals.png)
+| 27 | `2021-06-29` | [Animal Rescues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-06-29/readme.md) | ![png](/w27/w27_animals.png)
 | 28 | `2021-07-06` | [International Independence Days](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-06/readme.md) | ![png](/w28/w28_independence_days.png)
 | 29 | `2021-07-13` | [Scooby Doo](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-13/readme.md) | ![png](/w29/w29_scoobydoo.png)
 | 30 | `2021-07-20` | [US Droughts](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-20/readme.md) | ![png](/w30/w30_drought.png)
