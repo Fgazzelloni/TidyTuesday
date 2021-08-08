@@ -26,7 +26,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 16 | `2021-04-13` | [US Post Offices](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-13/readme.md) |![png](/w16/US_Post_office_space.png) 
 | 17 | `2021-04-20` | [Netflix Titles](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-20/readme.md) |![png](/w17/tidytuesday_NETFLIX.png) 
 | 18 | `2021-04-27` | [CEO Departures](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-27/readme.md) | ![png](/w18/tidytuesday_Departures.png)
-| 19 | `2021-05-04` | [Water Access Points](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-04/readme.md) | [WPDX](https://www.waterpointdata.org/) | [WPDX](https://www.waterpointdata.org/) | ![png](/w19/tidytuesday_Water.png) 
+| 19 | `2021-05-04` | [Water Access Points](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-04/readme.md) | ![png](/w19/tidytuesday_Water.png) 
 | 20 | `2021-05-11` | [US Broadband](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-11/readme.md) | ![png](/w20/alaska_map.png)
 | 21 | `2021-05-18` | [Ask a Manager Salary Survey](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-18/readme.md) | ![png](/w21/tidytuesday_Ask_a_manager_survey.png)
 | 22 | `2021-05-25` | [Mario Kart World Records](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-05-25/readme.md) | ![png](/w22/w22_supermario.png)
