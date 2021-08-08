@@ -1,0 +1,492 @@
+---
+title: "w32_paralympic.Rmd"
+author: "FG"
+date: "3 August 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+To set the `search()` function to check the kind of packages installed in the session:
+
+```{r}
+old <- search()
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+
+library(extrafont)
+# loadfonts() # to do just once at the beginning of the session
+```
+
+
+Load this week data:
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 32)
+tidytuesdayR::readme(tuesdata)
+athletes <- tuesdata$athletes
+```
+
+```{r}
+names(athletes)
+```
+
+
+```{r}
+head(athletes,3)
+```
+
+
+```{r}
+DataExplorer::profile_missing(athletes)
+```
+
+
+See the sports for the Paralympic Games:
+a total of 11 sports takes place with an avg of 8 each four year round
+8,9,9,9,10,10,10,10,10,11
+```{r}
+athletes %>% filter(year=="2016") %>%count(type) %>% arrange(-n)
+```
+
+See which country "abbreviation" are missing:
+49 rows, 1996 Gold	1
+```{r}
+athletes %>% filter(is.na(abb)) %>% count(medal)
+```
+
+Which Country won the Gold medal at the Paralympic in 1996 with Wheelchair Rugby ?
+
+- USA Rugby was the only US “Team Sport” to capture Gold during the 1996 Summer Paralympics.
+
+source: [Wheelchair rugby at the Summer Paralympics](https://en.wikipedia.org/wiki/Wheelchair_rugby_at_the_Summer_Paralympics)
+
+
+```{r}
+athletes %>% filter(is.na(abb)) %>% count(gender,type,medal,year)%>%arrange(-year)
+```
+
+
+Fill the row with the information above:
+```{r}
+id <- row.names(athletes)
+
+athletes <- cbind(id,athletes)
+
+athletes[athletes$id=="9796","abb"]<-"USA"
+
+
+athletes%>%filter(abb=="USA" & year=="1996" & medal=="Gold",type=="Rugby") 
+```
+
+
+```{r}
+athletes %>% filter(is.na(abb)) %>% count(id,gender,type,medal,year)%>%count(medal,year)
+```
+
+In 1980 the USA won 75 Gold medals as well as Poland, while West Germany won just 68 Gold medals. 
+
+[source](https://en.wikipedia.org/wiki/1980_Summer_Paralympics_medal_table)
+
+To see effectively who are the countries who have won the Paralympic and fill the gaps found, the best way is to check it by the year.
+
+```{r}
+athletes %>% filter(year=="1980") %>% count(medal,abb=="USA")
+```
+
+
+Load the Olympic Games data from last TidyTuesday:
+add the regions data to our dataset to use {ggflag} and add the round shaped flag to our geoms
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 31)
+regions <- tuesdata$regions
+```
+
+Set up the full dataset with some minor changes:
+
+```{r}
+athletes_full <- athletes %>%
+  mutate(gender=case_when(gender=="Mixed" ~ "Mixed team",
+                          TRUE ~ gender)) %>%
+  inner_join(regions,by=c("abb"="NOC")) %>%
+  select(year,abb,country,region,type,gender,medal,event,athlete) %>%
+  mutate(abb=tolower(abb),country=tolower(country))
+```
+
+
+```{r}
+DataExplorer::profile_missing(athletes_full)
+```
+
+
+Just a double chek of the "country" vector and then we drop it:
+
+```{r}
+head(athletes_full,3)
+```
+
+
+
+```{r}
+athletes_full %>% count(abb,country,region)
+```
+
+
+```{r}
+athletes_full <- athletes_full %>%
+  select(-country) 
+```
+
+
+10 years from 1980 to 2016 of Summer Paralympic Games:
+
+```{r}
+athletes_full %>% count(year)
+```
+
+
+abb: abbreviation of country region are 112 , while the region vector contains 104 countries. 
+
+- China region id divided in "chn" and "hkg", only hkg has 198 events 
+- Czech Republic divided in "cze" and "tch"
+- Germany divided in "frg", "gdr", "ger"
+- Russia divided in "rus" and "urs"
+- Serbia divided in "scg", "srb", "yug"
+
+
+```{r}
+athletes_full %>% count(region,abb)%>%arrange(region)
+```
+
+
+Add the {ggflags} package:
+
+```{r}
+library(ggflags)
+library(countrycode)
+```
+
+Assigning a new name to have the athletes_full set as back up:
+
+```{r}
+my_df <- athletes_full %>% 
+  mutate(country_code = countrycode(region, 
+            origin = 'country.name', 
+            destination = 'iso2c'),
+         country_code = tolower(country_code)) %>%
+  rename(sport=type) %>%
+  select(year,region,sport,medal,country_code) 
+
+
+my_df %>% DataExplorer::profile_missing()
+```
+
+
+
+
+What we want is to make a sigmoid network with geom_segment, geom_sigmoid, and geom_flag:
+to connect the 50+ highest frequency of countries at the Paralympic Games and the same by sports and Gold medals.
+
+Set the index vectors for each variable to connect with a sigmoid and rebuild a new set:
+
+```{r sigmoid_data}
+
+order_year <- my_df %>%
+  count(year) %>% 
+  mutate(index_year = row_number())
+
+
+order_region <- my_df %>%
+  count(region) %>% arrange(-n) %>%
+  mutate(index_region = row_number())
+
+order_sport <- my_df %>%
+  count(sport) %>% arrange(-n) %>%
+  mutate(index_sport = row_number())
+
+
+order_medal <- my_df %>%
+  count(medal) %>% arrange(-n) %>%
+  mutate(index_medal = row_number())
+
+
+my_df_ordered <- my_df %>%
+  left_join(order_year) %>% select(-n) %>%
+  left_join(order_region) %>% select(-n) %>%
+  left_join(order_sport) %>% select(-n) %>%
+  left_join(order_medal) %>% select(-n) 
+```
+
+Add the groups vectors and select the first 20 regions/countries by the highest frequency:
+
+```{r}
+gold_medal_sports <- my_df_ordered %>%
+  mutate(group = glue::glue("{year}-{region}"),
+         group2 = glue::glue("{region}-{sport}"),
+         group3 = glue::glue("{sport}-{medal}"),
+         group4 = glue::glue("{region}-{medal}"))
+         
+
+first_20_regions<- gold_medal_sports %>% 
+  count(region) %>% 
+  arrange(-n) %>% 
+  filter(n>=259) %>% 
+  select(-n) %>% 
+  unlist()
+```
+
+Make three more dataset for selected sigmoids data:
+
+```{r}
+sig_short <- gold_medal_sports %>% 
+  filter(region %in% first_20_regions)# & year==2016)#  & region==c("UK","Italy","USA")) 
+```
+
+
+```{r}
+sig_short_gold <- sig_short%>%filter(medal=="Gold")
+```
+
+```{r}
+sig_short_gold_yr <- sig_short %>% 
+  filter(medal=="Gold") %>% 
+  count(year,region,index_year,index_region,group) %>% 
+  arrange(-n) %>%
+  filter(n>=50)
+```
+
+```{r}
+sig_short_gold_sport <- sig_short %>% 
+  filter(medal=="Gold") %>% 
+  count(region,sport,index_region,index_sport,group2) %>% 
+  arrange(-n) %>%
+  filter(n>=50)
+```
+
+
+```{r}
+library(scales)
+library(ggbump)
+library(extrafont)
+library(showtext)
+library(cowplot)
+library(ggstream)
+library(colorspace) 
+library(ggpubr)
+
+## Automatically use showtext to render text for future devices
+showtext_auto()
+
+## Tell showtext the resolution of the device,
+## only needed for bitmap graphics. Default is 96
+showtext_opts(dpi = 320)
+
+## Loading Google fonts (https://fonts.google.com/)
+
+font_add_google("Oswald", "oswald")
+font_add_google("Rock Salt", "rock")
+font_add_google("Amatic SC" , "amatic")
+
+
+font_add_google("Share Tech Mono", "techmono")
+font_add_google("Roboto Condensed", "roboto condensed")
+font_add_google("Gochi Hand", "gochi")
+font_add_google("Schoolbell", "bell") # title
+font_add_google("Covered By Your Grace", "grace")
+
+
+
+
+
+background <- "red"
+text_color <- "grey50"
+
+palette <- c("#0286c3" , lighten("#0286c3" , 0.5)  , 
+             "#fbb22e" , lighten( "#fbb22e" , 0.5) , 
+             "#168c39" , lighten("#168c39" , 0.5)  ,
+             "#ee2f4d" , lighten("#ee2f4d" , 0.5)  )
+```
+
+
+
+Olympic Games color palettes:
+source: [palettes](https://media.specialolympics.org/resources/brand-awareness-and-communication/branding/brand-guidelines/Brand-Identity-Color-Palette.pdf)
+
+```{r}
+color_paralympics <- c("#FF0000","#C4161C","#820000","#ec008c","#c40063","#8B0037","#92278F","#6F2C91","#3D1063",
+                  "#0095da","#0063A5","#013B82","#39bb9d",
+                  "#39bb9d","#00695E","#B2D235","#88ac2e","#28752B",
+                  "#ffd400","#e5A812","#B18906","#f7941E",
+                  "#E66A1F","#985006")
+```
+
+
+Make the sigmoid network:
+
+```{r message=FALSE, warning=FALSE}
+para_plot <- ggplot(data=sig_short) +
+  
+  geom_text(
+    aes(x = -2.9, y = index_year+5, label = year), vjust=0, hjust="left", color = "red", size = 4.5,family = "oswald") +
+
+  geom_text(
+    aes(x = -0.65, y = index_region, label = region), vjust=0, hjust="center", color = "red", size = 4.5,family = "oswald") +
+  
+  geom_text(aes(x = 1.75, y = index_sport+5, label = sport),family = "oswald", hjust="center", vjust=0, color = "red", size = 4.5) +
+  
+  geom_text(aes(x = 3.25, y = index_medal+10, label = medal),family = "oswald", hjust=0, vjust=0, color = "red", size = 4.5) +
+  
+  #################
+  # first sigmoid connecting years to regions
+  
+   geom_point(data = sig_short_gold, aes(x = -2.7, y = index_year+5), color = "gold", size = 2, inherit.aes = FALSE) +
+  
+  geom_sigmoid(
+     aes(x = -2.7, xend = -1, y = index_year+5, yend =index_region, group=factor(group)), color = "#DCDCDC") + 
+  
+  geom_point(data = sig_short_gold, aes(x = -1, y = index_region), shape = 21, colour = "gold", fill = NA, size = 7, stroke = 1,inherit.aes = FALSE) +
+  
+  geom_sigmoid(data=sig_short_gold_yr,
+     aes(x = -2.7, xend = -1, y = index_year+5, yend =index_region, group=factor(group),color = region)) +
+  
+
+  ggflags::geom_flag(data = sig_short_gold, aes(x = -1, y = index_region, country = country_code), size=4.5) +
+  
+  ggflags::scale_country() +
+  guides(country="none") +
+  
+  
+  #################
+  # second sigmoid to connect regions to sports
+  
+
+  geom_point(data = sig_short_gold, aes(x = -0.4, y = index_region),color = "gold", size = 2, inherit.aes = FALSE) +
+  
+  geom_sigmoid(
+     aes(x = -0.4, xend = 1.4, y = index_region, yend =index_sport+5, group=factor(group2)),color = "#DCDCDC") +
+  
+  geom_point(data = sig_short_gold, aes(x = 1.4, y = index_sport+5), color = "gold", size = 2, inherit.aes = FALSE) +
+  
+  geom_sigmoid(data=sig_short_gold_sport,
+     aes(x = -0.4, xend = 1.4, y = index_region, yend =index_sport+5, group=factor(group2),color = sport)) +
+ 
+  
+  ################### 
+  # third sigmoid to connect sports to medals
+
+
+  geom_point(data = sig_short_gold, aes(x = 2.10, y = index_sport+5), color = "gold", size = 2, inherit.aes = FALSE)+
+  
+  geom_sigmoid(
+     aes(x = 2.10, xend = 3.15, y = index_sport+5, yend =index_medal+10, group=factor(group3)),color = "#DCDCDC") +
+  
+  geom_point(data = sig_short_gold, aes(x = 3.15, y = index_medal+10, color = medal), shape = 21, colour = "gold", fill = NA, size = 7, stroke = 1, inherit.aes = FALSE) +
+
+  geom_sigmoid(data = sig_short_gold,
+     aes(x = 2.10, xend = 3.15, y = index_sport+5, yend =index_medal+10, group=factor(group3), color = sport)) +
+  
+  
+  #####################
+
+  
+  ylim(0,200) +
+  xlim(-5,4) +
+  scale_y_reverse() +
+  scale_color_manual(values = color_paralympics) +
+  theme_void() +
+  theme(plot.background = element_blank(),
+        panel.background = element_blank(),
+        legend.position = "none")
+
+
+
+img_olympics<-"https://www.pngall.com/wp-content/uploads/2017/05/Olympic-Rings-Download-PNG.png"
+
+sigmoid <- ggimage::ggbackground(para_plot, img_olympics,alpha=.2, color="#CD919E")
+```
+
+
+
+```{r}
+final <- ggdraw(
+  sigmoid 
+  ) + 
+  ggtitle(label="Paralympic Games: from 1980 to 2016") +
+  theme_void() +
+  theme(
+    text = element_text(color = text_color , face = "bold"),
+    plot.title = element_text(family = "amatic" , size = 40 , hjust = 0.24,vjust=2),
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    plot.margin = margin(1,0,1,0, unit = "cm"),
+    plot.title.position = "panel") +
+  
+    annotate(geom = "text" , label = "Source: Paralympic Medals, IPC, kaggle.com | Graphic: @fgazzelloni" , x = 0.5 , y = 0 , family = "rock" , size = 6) +
+  
+    annotate("text",label="The Paralympic Games or Paralympics is the largest international event for disabled athletes \nand societal change and take place shortly after every Olympic Games in the same host city. \nThe Paralympic Games are held every two years", size=2.5,x = 0.78, y = 0.97,family="rock") +
+    
+   annotate("text",label="In 1980 the USA won 75 Gold medals \nas well as Poland, while\n West Germany won just 68 Gold medals.", size=3,x = 0.14, y = 0.6,family="rock") + 
+    
+   annotate("text",label="Which Country won the Gold medal at the Paralympic \nin 1996 with Wheelchair Rugby ?\nUSA Rugby was the only US “Team Sport” to capture \nGold during the 1996 Summer Paralympics.", size=3,x = 0.15, y = 0.2,family="rock") +
+  
+   annotate("text",label="Sigmoid network of the years, countries, sports and medals", size=3,x = 0.8, y = 0.1,family="rock") +
+  
+   annotate("text",label="Countries with the highest frequency in participation", size=3,x = 0.23, y =0.9,family="rock") +
+  
+# annotate images
+draw_image(image = ("Olympic-Torch-PNG-Free-Download.png"),
+             #"https://www.pngall.com/wp-content/uploads/2017/05/Olympic-Rings-Download-PNG.png",
+           x = -0.05 , y = 0.65 , height = 0.45 , width = 0.25) +
+  draw_image(image = "https://camo.githubusercontent.com/1411a00ca19fc49c4b0099d26246d261baafd979a76c007ae835984f8c1ae3d2/68747470733a2f2f7777772e706172616c796d7069632e6f72672f73697465732f64656661756c742f66696c65732f7374796c65732f6c617267655f6f726967696e616c2f7075626c69632f323031392d31302f4950432532304e4557253230454d424c454d2e4a50473f69746f6b3d5f46534a62623651",
+           x = 0.55 , y = 0.78 , height = 0.08 , width = 0.25)
+
+
+```
+
+
+
+```{r}
+ragg::agg_png("w32_paralympic.png",
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+```
+
+
+```{r}
+
+# read the image, attach the Tidytuesday logo and save it --------------------------
+library(ggimage)
+library(magick)
+
+
+tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+
+tidy_final <- image_read("w32_paralympic.png")
+
+attached_logo <- image_composite(tidy_final, tidy_logo,
+                                 operator="atop",
+                                 gravity="northeast") # tell R where to put the logo
+
+
+image_write(attached_logo, path = "w32_paralympic.png", format = "png") # save final plot
+
+```
+
+
+
+
+
+
+
