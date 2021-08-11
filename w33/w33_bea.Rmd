@@ -89,7 +89,7 @@ investment%>%filter(year==2000,str_detect(category,"Private"),group_num%in%seq(1
 
 
 
-Exploratory analysis on Gross investments shows increase in investments in the private sector as the most flourishin category within the last 70 years, followed by basic, S&L and social investiments in infrastuctures. Digital infrastructure and transports are still below 200 000 millions $.
+Exploratory analysis on Gross investments shows increase in investments in the private sector as the most flourishing category within the last 70 years, followed by basic, S&L and social investments in infrastructures. Digital infrastructure and transports are still below 200 000 millions $.
 To be noted is that the private category for gross investment is still divided by amount of investments, but as a whole it releases the stronger increase over time.
 
 
@@ -224,9 +224,9 @@ image_write(attached_logo, path = "w33_bea.png", format = "png") # save final pl
 
 
 
-Before continuing with other visualizations of investment trends, let's check the other data sets to see the differences and then decide if to make a one dataframe to use for comaprison of the gross investments, the chained investments with the implicit price deflactors (IPDs).
+Before continuing with other visualizations of investment trends, let's check the other data sets to see the differences and then decide if to make a unified dataframe to use for comparison of the gross investments, the chained investments with the implicit price deflactors (IPDs).
 
-The first 4 varibles are in common within the three datasets, the next step is to check wheather there are differences within the first 4 variables.
+The first 4 variables are in common within the three datasets, the next step is to check whether there are differences within the first 4 variables.
 
 
 
@@ -242,7 +242,7 @@ DataExplorer::profile_missing(chain_investment)
 chain_investment %>% count(category)
 ```
 
-"Office buildings, NAICS 518 and 519" is the only category in "investiment" df which doesn't appear in "chain_investment" df.
+"Office buildings, NAICS 518 and 519" is the only category in "investment" df which doesn't appear in "chain_investment" df.
 
 ```{r}
 cat <- chain_investment %>% count(category) %>% select(-n) %>% unlist()
