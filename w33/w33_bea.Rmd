@@ -1,0 +1,324 @@
+
+---
+title: "BEA: Bureau of Economic Analysis"
+author: "Federica Gazzelloni"
+date: "8/10/2021"
+output: html_document
+---
+
+source: https://www.bea.gov/system/files/papers/BEA-WP2020-12.pdf
+
+
+
+The measurement of infrastructure in the U.S. National Economic Accounts (NEAs) 
+
+consider different metrics
+
+provided are the resources devoted to different types of infrastructure each year and a useful overview of trends
+
+
+Load the libraries:
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+options(scipen = 999)
+```
+
+Load the data:
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 33)
+tidytuesdayR::readme(tuesdata)
+```
+
+
+-------------------------
+
+
+Check of the three data sets:
+
+
+1 - Investment:
+
+```{r}
+investment <- tuesdata$investment
+DataExplorer::profile_missing(investment)
+```
+
+
+No values are missing in "investment" which is made of these 5 variables:
+
+- category: Category of investment
+- meta_cat:	Group category of investment
+- group_num: Group number of investment
+- year:	Year of investment
+- gross_inv: Gross investment in millions of USD
+
+
+```{r}
+head(investment)
+```
+
+
+71 **Year** of investment from 1947 to 2017:
+
+```{r}
+investment%>%count(year)
+```
+
+
+60 **Category of investment**:
+```{r}
+investment %>% count(category)
+```
+
+16 meta_cat i.e. **Group category of investment**:
+
+```{r}
+investment%>%count(meta_cat)
+```
+
+20 **Group number of investment**:
+
+```{r}
+investment%>%count(group_num)
+```
+
+```{r}
+
+investment%>%filter(year==2000,str_detect(category,"Private"),group_num%in%seq(1,10,by=1))
+```
+
+
+
+Exploratory analysis on Gross investments shows increase in investments in the private sector as the most flourishin category within the last 70 years, followed by basic, S&L and social investiments in infrastuctures. Digital infrastructure and transports are still below 200 000 millions $.
+To be noted is that the private category for gross investment is still divided by amount of investments, but as a whole it releases the stronger increase over time.
+
+
+```{r message=FALSE, warning=FALSE}
+
+ggplot(data=subset(investment,gross_inv>=500),
+       aes(x=factor(year),y=gross_inv,group=group_num)) +
+  geom_point(aes(color=category),size=0.8,alpha=0.5)+ 
+  guides(color="none",fill="none") +
+  geom_text(data=subset(investment,year==2016),
+            aes(x=factor(year),y=gross_inv,group=category,label=category),
+            check_overlap = TRUE,size=2.5,nudge_x = 3,hjust=0) +
+  scale_x_discrete(expand = expand_scale(mult = c(0, .5)), breaks=seq(1947,2017,5)) +
+  scale_y_continuous(labels=scales::dollar) +
+  labs(title="US Gross investment by investment categories at 2017", 
+       subtitle="70-year trends from 1947 to 2017\n",
+       caption="BEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs) \nInfographic: @fgazzelloni",
+       x="Year",y="Gross investment in millions of USD") +
+  ggthemes::theme_economist() +
+  theme(axis.text.x = element_text(angle=90,size=8),
+        axis.text.y = element_text(size=8),
+        axis.title.y = element_text(vjust=4),
+        axis.title.x = element_text(vjust=-2),
+        axis.line.x = element_blank(),
+        axis.ticks.x = element_line(size=2),
+        panel.grid.major.y = element_line(linetype = "dashed"),
+        plot.caption = element_text(vjust=-4),
+        plot.subtitle = element_text(vjust=-2,hjust=0),
+       panel.background = element_blank(), 
+       plot.margin = margin(0.5, 1, 1, 0.5, "cm"),
+       plot.background = element_rect(fill = "grey90",colour = "grey",size = 2)
+       )
+  
+```
+
+
+```{r message=FALSE, warning=FALSE}
+update_geom_defaults("text", list(colour = "#424242",size=2))
+
+plot <- investment %>%
+  filter(gross_inv>=500) %>%
+  mutate(category=case_when(category=="Private communications equipment in NAICS 515, 517, 518, and 519"~"Private communications equipment in NAICS",
+                            category=="Private computers in NAICS 515, 517, 518, and 519"~"Private computers in NAICS",
+                            category=="Office buildings, NAICS 518 and 519"~"Office buildings, NAICS",
+                            category=="Private software in NAICS 515, 517, 518, and 519"~"Private software in NAICS",
+         TRUE~category)) %>% #count(category)
+  group_by(category) %>%
+  summarize(tot_gross_inv=round(sum(gross_inv)))%>%
+  ungroup() %>%
+  arrange(-tot_gross_inv) %>%
+  
+  ggplot(aes(x=fct_reorder(category,tot_gross_inv),y=(tot_gross_inv),group=category)) +
+  geom_histogram(aes(fill=category),stat = "identity",position=position_dodge(width=0.5),size=0.8,alpha=0.5,bins = 50)+ 
+  geom_text(aes(label=scales::dollar(tot_gross_inv)),size=2.5,hjust=0) +
+  guides(color="none",fill="none") +
+  labs(title="US Investment categories based on total gross investments", 
+       subtitle="70-year period from 1947 to 2017\n",
+       caption="BEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
+       x="Investment Categories",y="Total Gross Investment (log2 tranformation)") +
+  coord_flip() +
+  scale_y_log10(labels=scales::dollar,expand = expand_scale(mult = c(0, .3))) +
+  ggthemes::theme_economist() +
+  theme(axis.text.x = element_text(angle=0,size=8,hjust=0),
+        axis.text.y = element_text(size=8,hjust=1),
+        axis.title.y = element_text(vjust=4),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.x = element_line(size=1,color="darkred"),
+        axis.ticks.y = element_line(size=0.2,color="darkred"),
+        axis.ticks.length=unit(.5, "cm"),
+        plot.title.position = "plot",
+        plot.caption = element_text(vjust=-5),
+        plot.caption.position = "plot",
+        plot.subtitle = element_text(vjust=-2,hjust=0),
+        panel.grid = element_blank(),
+       panel.background = element_blank(), 
+       plot.margin = margin(0.5, 1, 1, 1, "cm"),
+       plot.background = element_rect(fill = "grey90",colour = "grey",size = 2)
+       ) +
+  annotate("text",label="The Private sector\nshows the highest level of \nincrease in investments within the last 70 years.\n Private total gross investments is followed\n by S&L pensions,\n investments in basic, \nand social infrastructures. \nDigital infrastructure and transports \nare before Power, Health , \nHighways and finally Education \nwith about 2 000 000 millions $ total investment.",x=25,y=100000000,size=4)
+```
+
+
+```{r}
+library(cowplot)
+```
+
+
+```{r}
+final <- ggdraw(
+  plot ) +
+  draw_image(image = "a0nqfdOX.jpg",
+           x = 0.15 , y = 0.05 , height = 0.05 , width = 0.20) +
+  draw_image(image = "Logo2.png",
+           x = 0.75 , y = 0.92 , height = 0.08 , width = 0.25)
+```
+
+
+
+```{r}
+ragg::agg_png("w33_bea.png",
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+```
+
+
+```{r}
+
+# read the image, attach the Tidytuesday logo and save it --------------------------
+library(ggimage)
+library(magick)
+
+
+tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+
+tidy_final <- image_read("w33_bea.png")
+
+attached_logo <- image_composite(tidy_final, tidy_logo,
+                                 operator="atop",
+                                 gravity="southeast") # tell R where to put the logo
+
+
+image_write(attached_logo, path = "w33_bea.png", format = "png") # save final plot
+
+```
+
+
+
+
+---------------------
+
+
+
+Before continuing with other visualizations of investment trends, let's check the other data sets to see the differences and then decide if to make a one dataframe to use for comaprison of the gross investments, the chained investments with the implicit price deflactors (IPDs).
+
+The first 4 varibles are in common within the three datasets, the next step is to check wheather there are differences within the first 4 variables.
+
+
+
+
+```{r}
+chain_investment <- tuesdata$chain_investment
+DataExplorer::profile_missing(chain_investment)
+```
+
+
+59 chain investment categories:
+```{r}
+chain_investment %>% count(category)
+```
+
+"Office buildings, NAICS 518 and 519" is the only category in "investiment" df which doesn't appear in "chain_investment" df.
+
+```{r}
+cat <- chain_investment %>% count(category) %>% select(-n) %>% unlist()
+investment %>% filter(!category %in% cat) %>% count(category)
+```
+
+-----------------------------
+
+Implicit Price Deflators (IPDs). 
+An implicit price deflator is the ratio of the current-dollar value of a series, such as gross domestic product (GDP), to its corresponding chained-dollar value, multiplied by 100.
+
+```{r}
+ipd <- tuesdata$ipd
+DataExplorer::profile_missing(ipd)
+ipd %>% filter(is.na(gross_inv_ipd)) %>% count(category)
+```
+
+
+60 categories are in the "Implicit Price Deflators" df
+
+```{r}
+ipd %>% count(category)
+```
+
+comparing it with the "investment" and "chain investment" categories 6 of those are not listed as "ipd" categories:
+
+```{r}
+cat_investment <- investment%>%count(category)%>%select(-n)%>%unlist()
+ipd%>%filter(!category%in%cat_investment)%>%count(category)
+```
+
+
+The data set contains:
+
+- gross_inv:	Gross investment in millions of USD
+- gross_inv_chain:	Gross investment (chained 2021 dollars) in millions of USD
+- gross_inv_ipd: Implicit Price Deflators (IPDs)
+
+```{r}
+investment_raw <- investment%>%
+  inner_join(chain_investment,by=c("category","meta_cat","group_num","year")) %>%
+  inner_join(ipd,by=c("category","meta_cat","group_num","year"))
+```
+
+```{r}
+DataExplorer::profile_missing(investment_raw)
+```
+
+
+42 Category of investment: 
+```{r}
+investment_raw%>%count(category)
+```
+
+
+14 Group category of investment:
+```{r}
+investment_raw%>%count(meta_cat)
+```
+
+16 Group number of investment
+```{r}
+investment_raw%>%count(group_num)
+```
+
+
+
+Gross investment in millions of USD
+Gross investment (chained 2021 dollars) in millions of USD
+Implicit Price Deflators (IPDs) 
+```{r}
+investment_raw%>%count(year,gross_inv,gross_inv_chain,gross_inv_ipd)
+```
+
+
+
+
