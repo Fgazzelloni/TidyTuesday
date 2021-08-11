@@ -148,7 +148,7 @@ plot <- investment %>%
   labs(title="US Investment categories based on total gross investments", 
        subtitle="70-year period from 1947 to 2017\n",
        caption="BEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
-       x="Investment Categories",y="Total Gross Investment (log2 tranformation)") +
+       x="Investment Categories",y="Total Gross Investment (log10 tranformation)") +
   coord_flip() +
   scale_y_log10(labels=scales::dollar,expand = expand_scale(mult = c(0, .3))) +
   ggthemes::theme_economist() +
@@ -180,8 +180,6 @@ library(cowplot)
 ```{r}
 final <- ggdraw(
   plot ) +
-  draw_image(image = "a0nqfdOX.jpg",
-           x = 0.15 , y = 0.05 , height = 0.05 , width = 0.20) +
   draw_image(image = "Logo2.png",
            x = 0.75 , y = 0.92 , height = 0.08 , width = 0.25)
 ```
