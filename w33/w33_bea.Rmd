@@ -6,103 +6,300 @@ date: "8/10/2021"
 output: html_document
 ---
 
-source: https://www.bea.gov/system/files/papers/BEA-WP2020-12.pdf
+
+# BEA Infrastructure Investment
 
 
 
-The measurement of infrastructure in the U.S. National Economic Accounts (NEAs) 
-
-consider different metrics
-
-provided are the resources devoted to different types of infrastructure each year and a useful overview of trends
+**Introduction**
 
 
-Load the libraries:
-```{r message=FALSE, warning=FALSE}
+The measurement of infrastructure in the U.S. National Economic Accounts (NEAs) considers different metrics, provided are the resources devoted to different types of infrastructure each year and a useful overview of trends.
+
+Classification of investment categories is provided by North American Industry Classification System ([NAICS](https://www.census.gov/naics/))
+
+
+----------------------------
+
+
+Types of infrastructure:
+
+- Basic: transportation and utilities
+- Social: pubblic safety, education and health
+- Digital: it excludes servers owned by private firms outside of NAICS 518 and 519
+
+the analysis spans through **70 Years** of investments from 1947 to 2017.
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
 options(scipen = 999)
 ```
 
-Load the data:
+## Data
+
+This analysis starts with analysing the classification of the investment categories by looking at:
+
+### Original data
+
+The original [datasets](https://www.bea.gov/system/files/2021-01/infrastructure-data-may-2020.xlsx) provided by the website are very useful to check whether the **category** and the **meta category** variables are homogeneous within the data sets:
+
+
+1 - **Investment** data set:
+
+*Investment* data set is extracted from the original .xlsx file and shows the basic structure of the group categories on which the analysis is based.
+
+
+```{r message=FALSE, warning=FALSE,cache=TRUE}
+df_inv_raw <- readxl::read_excel("infrastructure-data-may-2020.xlsx", sheet = "cu$inv",skip = 2)
+```
+
+
+```{r eval=TRUE, message=FALSE, warning=FALSE}
+df_inv_raw <- df_inv_raw %>% 
+  rename(group = ...1, category = ...2) %>% 
+  filter(!is.na(category)) %>% 
+  mutate(
+    meta_cat = if_else(!is.na(group), category, NA_character_), 
+    group_num = group,
+    .after = "category"
+    ) 
+```
+
+
 ```{r}
+DT::datatable(df_inv_raw %>% select(meta_cat,group,category))
+```
+
+
+
+```{r include=FALSE}
+investment <- df_inv_raw %>%
+  fill(meta_cat, group_num) %>%
+  pivot_longer(names_to = "year", values_to = "gross_inv", cols = `1947`:`2017`,
+               names_transform = list(year = as.integer)) %>% 
+  filter(is.na(group)) %>% 
+  select(-group)
+```
+
+
+In addtion it contains the *gross investment* variable which is the variable that will be used in the analysis as one of the factors to construct the *Implicit Price Deflators* index.
+
+```{r}
+names(investment)
+```
+
+
+2 - **Chain investment** data set:
+
+It is extracted as the same as the *investment* set and it contains the same group of category variables except for one element in the category which is missing, it will be shown in more details further below in the analysis. 
+
+It doesn't contains the *gross investment* variable but it the *gross investment chain* instead.
+```{r message=FALSE, warning=FALSE, evaluate=FALSE, include=FALSE,cache=TRUE}
+df_chain_inv_raw <- readxl::read_excel("infrastructure-data-may-2020.xlsx", sheet = "ch$inv", skip = 2)
+
+chain_investment <- df_chain_inv_raw %>% 
+  rename(group = ...1, category = ...2) %>%
+  mutate(
+    meta_cat = if_else(!is.na(group), category, NA_character_), 
+    group_num = group,
+    .after = "category"
+  ) %>%
+  fill(meta_cat, group_num) %>%
+  pivot_longer(names_to = "year", values_to = "gross_inv_chain", cols = `1947`:`2017`,
+               names_transform = list(year = as.integer)) %>% 
+  filter(is.na(group)) %>% 
+  select(-group)
+```
+
+```{r}
+names(chain_investment)
+```
+
+
+3 - **IPD: Implicit Price Deflators** data set:
+```{r message=FALSE, warning=FALSE, evaluate=FALSE, include=FALSE,cache=TRUE}
+df_IPD_inv_raw <- readxl::read_excel("infrastructure-data-may-2020.xlsx", sheet = "IPD_inv", skip = 2)
+
+df_IPD_inv_raw <- df_IPD_inv_raw %>%
+rename(group = ...1, category = ...2) %>% 
+  filter(!is.na(category)) %>% 
+  mutate(
+    meta_cat = if_else(!is.na(group), category, NA_character_), 
+    group_num = group,
+    group_num = if_else(category == "GDP", 0, group_num),
+    .after = "category"
+  ) 
+```
+
+
+
+```{r}
+DT::datatable(df_IPD_inv_raw %>% select(meta_cat,group,category))
+```
+
+
+```{r}
+ipd <- df_IPD_inv_raw %>%
+  fill(meta_cat, group_num) %>%
+  pivot_longer(names_to = "year", values_to = "gross_inv_ipd", cols = `1947`:`2017`,
+               names_transform = list(year = as.integer)) %>% 
+  filter(is.na(group)) %>% 
+  select(-group) 
+```
+
+
+
+
+IPD set contains one more meta category as well as one more group number for the GDP element of the vector, which corresponds to group category number 0.
+
+In fact the script for the IPD variable changes slightly with the addition of one more line of code.
+
+It also contains the *gross investment ipd* variables whixh is the object of this study.
+```{r}
+ ipd <- ipd %>%
+  mutate(meta_cat = if_else(category == "GDP", "GDP", meta_cat)) 
+
+names(ipd)
+```
+
+
+### TidyTuesday data
+
+Data can also be loaded via:
+```{r message=FALSE, warning=FALSE,cache=TRUE}
 tuesdata <- tidytuesdayR::tt_load(2021, week = 33)
 tidytuesdayR::readme(tuesdata)
 ```
 
 
--------------------------
+
+-----------------------------
 
 
-Check of the three data sets:
+## Meta Categories and sub-groups
+
+The original data sets are very useful to check whether the investments classified within their categories are homogeneous within the other data sets.
+
+The analysis starts with checking of the three data sets, to see what are the common categories and if there are any differences. Next step would be to unify the three data sets to make a model for the **Implicit Price Deflators**.
 
 
-1 - Investment:
+
+------------------
+
+
+The first data set **Investment** is the one used for understanding the composition of the variables. The other two are quite similar except for the *investment* variable, and two other differences in group category.
+
+Let's start having a look at any missing values:
 
 ```{r}
 investment <- tuesdata$investment
 DataExplorer::profile_missing(investment)
 ```
 
+No values are missing in *investment* which is made of 5 variables:
 
-No values are missing in "investment" which is made of these 5 variables:
+- **category**: Category of investment (60 categories)
+- **meta_cat**:	Group category of investment (16 meta categories)
+- **group_num**: Group number of investment (1 to 20 number of sub-group of investment category)
+- **year**:	Year of investment (from 1947 to 2017)
+- **gross_inv**: Gross investment in millions of USD (which ranges from -194 to 500 900 millions $)
 
-- category: Category of investment
-- meta_cat:	Group category of investment
-- group_num: Group number of investment
-- year:	Year of investment
-- gross_inv: Gross investment in millions of USD
+
+The `meta_cat` vector is the *Group category of investment*, and it has a sub-group numeric version named `group_num`, and a sub-sub-group of more specific categories of investments named: `category`. 
+
+The last variable is `gross_inv` i.e. **Gross investment** which is the sum of gross private domestic investment, government gross investment, and balance on current account, national income and product accounts.
 
 
 ```{r}
-head(investment)
+DT::datatable(head(investment,3))
 ```
 
+--------------------
 
-71 **Year** of investment from 1947 to 2017:
+
+### Group category of investment
+
+16 `meta_cat`:
 
 ```{r}
-investment%>%count(year)
+DT::datatable(investment%>%count(meta_cat))
 ```
 
-
-60 **Category of investment**:
-```{r}
-investment %>% count(category)
-```
-
-16 meta_cat i.e. **Group category of investment**:
 
 ```{r}
-investment%>%count(meta_cat)
+investment <- investment %>%
+  mutate(meta_cat = case_when(meta_cat=="Total basic infrastructure" ~ "Basic",
+                              TRUE~meta_cat ))
 ```
 
-20 **Group number of investment**:
+
+---------------------
+
+
+
+### Group number of investment
+
+20 sub-group of the `meta_cat` corresponding to `group_num`:
 
 ```{r}
-investment%>%count(group_num)
+DT::datatable(investment %>% count(group_num))
 ```
+
+
+---------------------
+
+
+
+### Category of investment
+
+60 sub-sub-group `category` vector:
+```{r}
+DT::datatable(investment %>% count(category))
+```
+
+
+The list of `category` contains a specification of the classification method for some of the elements in the vector, such as:
+
+- Private communications equipment in NAICS 515, 517, 518, and 519 
+- Private computers in NAICS 515, 517, 518, and 519
+- Office buildings, NAICS 518 and 519
+- Private software in NAICS 515, 517, 518, and 519
+
+These elements are part of the **Digital** meta category of investment and the numbers at the ends are to specify that they are classified by the NAICS and only those classified in North America are accepted within the list of digital investments. So, other form of digital investments are not considered in this study.
+
+
+
 
 ```{r}
-
-investment%>%filter(year==2000,str_detect(category,"Private"),group_num%in%seq(1,10,by=1))
+investment <- investment %>%
+  mutate(category = case_when(
+    category=="Private communications equipment in NAICS 515, 517, 518, and 519"~"Private communications equipment",
+    category=="Private computers in NAICS 515, 517, 518, and 519"~"Private computers",
+    category=="Office buildings, NAICS 518 and 519"~"Office buildings",
+    category=="Private software in NAICS 515, 517, 518, and 519"~"Private software",
+    TRUE~category)) 
+  
 ```
 
 
+### Exploratory analysis - Investment
 
-Exploratory analysis on Gross investments shows increase in investments in the private sector as the most flourishing category within the last 70 years, followed by basic, S&L and social investments in infrastructures. Digital infrastructure and transports are still below 200 000 millions $.
+Exploratory analysis on *Gross investments* shows an increase in investments in the private sector as the most flourishing category within the last 70 years, followed by basic, S&L and social investments in infrastructures. Digital infrastructure and transports are still below 200 000 millions $.
 To be noted is that the private category for gross investment is still divided by amount of investments, but as a whole it releases the stronger increase over time.
 
 
-```{r message=FALSE, warning=FALSE}
+```{r fig.align="center", message=FALSE, warning=FALSE, height='100%', include=FALSE, out.width="100%", width='100%'}
 
-ggplot(data=subset(investment,gross_inv>=500),
+plot1 <- ggplot(data=subset(investment,gross_inv>=500),
        aes(x=factor(year),y=gross_inv,group=group_num)) +
   geom_point(aes(color=category),size=0.8,alpha=0.5)+ 
   guides(color="none",fill="none") +
   geom_text(data=subset(investment,year==2016),
             aes(x=factor(year),y=gross_inv,group=category,label=category),
             check_overlap = TRUE,size=2.5,nudge_x = 3,hjust=0) +
-  scale_x_discrete(expand = expand_scale(mult = c(0, .5)), breaks=seq(1947,2017,5)) +
+  scale_x_discrete(expand = expansion(mult = c(0, .5)), breaks=seq(1947,2017,5)) +
   scale_y_continuous(labels=scales::dollar) +
   labs(title="US Gross investment by investment categories at 2017", 
        subtitle="70-year trends from 1947 to 2017\n",
@@ -122,35 +319,37 @@ ggplot(data=subset(investment,gross_inv>=500),
        plot.margin = margin(0.5, 1, 1, 0.5, "cm"),
        plot.background = element_rect(fill = "grey90",colour = "grey",size = 2)
        )
-  
 ```
 
 
-```{r message=FALSE, warning=FALSE}
+```{r plot1, message=FALSE, warning=FALSE, height = '100%', width = '100%',out.width="100%", fig.align="center"}
+plot1
+```
+
+A second visualization of the *gross investment* shows the category with the highest level of *gross investment* within the last 70 years in millions $.
+
+
+```{r fig.align="center", message=FALSE, warning=FALSE, height='100%', include=FALSE, out.width="100%", width='100%'}
+
 update_geom_defaults("text", list(colour = "#424242",size=2))
 
-plot <- investment %>%
+plot2 <- investment %>%
   filter(gross_inv>=500) %>%
-  mutate(category=case_when(category=="Private communications equipment in NAICS 515, 517, 518, and 519"~"Private communications equipment in NAICS",
-                            category=="Private computers in NAICS 515, 517, 518, and 519"~"Private computers in NAICS",
-                            category=="Office buildings, NAICS 518 and 519"~"Office buildings, NAICS",
-                            category=="Private software in NAICS 515, 517, 518, and 519"~"Private software in NAICS",
-         TRUE~category)) %>% #count(category)
-  group_by(category) %>%
+  group_by(meta_cat) %>%
   summarize(tot_gross_inv=round(sum(gross_inv)))%>%
   ungroup() %>%
   arrange(-tot_gross_inv) %>%
   
-  ggplot(aes(x=fct_reorder(category,tot_gross_inv),y=(tot_gross_inv),group=category)) +
-  geom_histogram(aes(fill=category),stat = "identity",position=position_dodge(width=0.5),size=0.8,alpha=0.5,bins = 50)+ 
+  ggplot(aes(x=fct_reorder(meta_cat,tot_gross_inv), y=(tot_gross_inv), group=meta_cat)) +
+  geom_histogram(aes(fill=meta_cat),stat = "identity", position=position_dodge(width=0.8), size=0.8,alpha=0.5,bins = 50)+ 
   geom_text(aes(label=scales::dollar(tot_gross_inv)),size=2.5,hjust=0) +
   guides(color="none",fill="none") +
-  labs(title="US Investment categories based on total gross investments", 
+  labs(title="US Group category of investment based on total gross investments", 
        subtitle="70-year period from 1947 to 2017\n",
-       caption="BEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
-       x="Investment Categories",y="Total Gross Investment (log10 tranformation)") +
-  coord_flip() +
-  scale_y_log10(labels=scales::dollar,expand = expand_scale(mult = c(0, .3))) +
+       caption="\nBEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
+       x="Group category of investment", y="Total Gross Investment (log10 tranformation)") +
+  coord_flip() + 
+  scale_y_log10(labels=scales::dollar,breaks=c(1,100,10000,1000000,40000000), expand = expansion(mult = c(0, .15)))+
   ggthemes::theme_economist() +
   theme(axis.text.x = element_text(angle=0,size=8,hjust=0),
         axis.text.y = element_text(size=8,hjust=1),
@@ -160,94 +359,110 @@ plot <- investment %>%
         axis.ticks.y = element_line(size=0.2,color="darkred"),
         axis.ticks.length=unit(.5, "cm"),
         plot.title.position = "plot",
-        plot.caption = element_text(vjust=-5),
+        plot.title = element_text(size = 14),
+        plot.caption = element_text(vjust=-5,size=8),
+        plot.caption.position = "plot",
+        plot.subtitle = element_text(vjust=-2,hjust=0),
+        panel.grid = element_blank(),
+        panel.background = element_blank(), 
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+        plot.background = element_rect(fill = "grey90",colour = "grey",size = 2)
+       ) 
+```
+
+```{r plot2, message=FALSE, warning=FALSE, height = '100%', width = '100%',out.width="100%", fig.align="center"}
+plot2
+```
+
+```{r fig.align="center", message=FALSE, warning=FALSE, height='100%', include=FALSE, out.width="100%", width='100%'}
+
+update_geom_defaults("text", list(colour = "#424242",size=2))
+
+plot3 <- investment %>%
+  filter(gross_inv>=500) %>%
+  group_by(category) %>%
+  summarize(tot_gross_inv=round(sum(gross_inv)))%>%
+  ungroup() %>%
+  arrange(-tot_gross_inv) %>%
+  
+  ggplot(aes(x=fct_reorder(category,tot_gross_inv),y=(tot_gross_inv),group=category)) +
+  geom_histogram(aes(fill=category),stat = "identity", position=position_dodge(width=0.8),size=0.8,alpha=0.5,bins = 50)+ 
+  geom_text(aes(label=scales::dollar(tot_gross_inv)),size=1.5,hjust=0) +
+  guides(color="none",fill="none") +
+  labs(title="US Investment categories based on total gross investments", 
+       subtitle="70-year period from 1947 to 2017\n",
+       caption="\nBEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
+       x="Investment Categories",y="Total Gross Investment (log10 tranformation)") +
+  coord_flip() +
+  scale_y_log10(labels=scales::dollar,expand = expansion(mult = c(0, .3))) +
+  ggthemes::theme_economist() +
+  theme(axis.text.x = element_text(angle=0,size=8,hjust=0),
+        axis.text.y = element_text(size=5,hjust=1),
+        axis.title.y = element_text(vjust=4),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.x = element_line(size=1,color="darkred"),
+        axis.ticks.y = element_line(size=0.2,color="darkred"),
+        axis.ticks.length=unit(.5, "cm"),
+        plot.title.position = "plot",
+        plot.caption = element_text(vjust=-5,size=6),
         plot.caption.position = "plot",
         plot.subtitle = element_text(vjust=-2,hjust=0),
         panel.grid = element_blank(),
        panel.background = element_blank(), 
-       plot.margin = margin(0.5, 1, 1, 1, "cm"),
+       plot.margin = margin(0.5, 1, 0.5, 1, "cm"),
        plot.background = element_rect(fill = "grey90",colour = "grey",size = 2)
        ) +
-  annotate("text",label="The Private sector\nshows the highest level of \nincrease in investments within the last 70 years.\n Private total gross investments is followed\n by S&L pensions,\n investments in basic, \nand social infrastructures. \nDigital infrastructure and transports \nare before Power, Health , \nHighways and finally Education \nwith about 2 000 000 millions $ total investment.",x=25,y=100000000,size=4)
+  annotate("text",label="The Private sector\nshows the highest level of \nincrease in investments \nwithin the last 70 years.\n Private total gross investments is \nfollowed by S&L pensions,\n investments in basic, \nand social infrastructures. \nDigital infrastructure and transports \nare before Power, Health , \nHighways and finally Education \nwith about 2 000 000 millions $ total investment.",x=25,y=100000000,size=2)
 ```
 
-
-```{r}
-library(cowplot)
+```{r plot3, message=FALSE, warning=FALSE, height = '100%', width = '100%',out.width="100%", fig.align="center"}
+plot3
 ```
-
-
-```{r}
-final <- ggdraw(
-  plot ) +
-  draw_image(image = "Logo2.png",
-           x = 0.75 , y = 0.92 , height = 0.08 , width = 0.25)
-```
-
-
-
-```{r}
-ragg::agg_png("w33_bea.png",
-              res = 320, width = 14, height = 8, units = "in")
-final
-
-dev.off()
-```
-
-
-```{r}
-
-# read the image, attach the Tidytuesday logo and save it --------------------------
-library(ggimage)
-library(magick)
-
-
-tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
-  image_resize("300x300")
-
-
-tidy_final <- image_read("w33_bea.png")
-
-attached_logo <- image_composite(tidy_final, tidy_logo,
-                                 operator="atop",
-                                 gravity="southeast") # tell R where to put the logo
-
-
-image_write(attached_logo, path = "w33_bea.png", format = "png") # save final plot
-
-```
-
-
 
 
 ---------------------
 
 
 
-Before continuing with other visualizations of investment trends, let's check the other data sets to see the differences and then decide if to make a unified dataframe to use for comparison of the gross investments, the chained investments with the implicit price deflactors (IPDs).
+Before continuing with other visualizations of investment trends, let's check the other data sets to see the differences and then decide if to make a unified dataframe to use for comparison of gross investments, chained investments with implicit price deflactors (IPDs).
 
-The first 4 variables are in common within the three datasets, the next step is to check whether there are differences within the first 4 variables.
+The first 4 variables are in common within all datasets, the next step is to check whether there are differences within the first 4 variables.
 
-
-
+The second set doesn't contains differences in classification when compared with investment set.
 
 ```{r}
 chain_investment <- tuesdata$chain_investment
 DataExplorer::profile_missing(chain_investment)
 ```
 
+```{r}
+chain_investment <- chain_investment%>% 
+  mutate(meta_cat = case_when(meta_cat=="Total basic infrastructure" ~ "Basic",
+                              TRUE~meta_cat ))
+```
+
+
 
 59 chain investment categories:
 ```{r}
-chain_investment %>% count(category)
+chain_investment <- chain_investment %>% 
+  mutate(category=case_when(category=="Private communications equipment in NAICS 515, 517, 518, and 519"~"Private communications equipment",
+                            category=="Private computers in NAICS 515, 517, 518, and 519"~"Private computers",
+                            category=="Office buildings, NAICS 518 and 519"~"Office buildings",
+                            category=="Private software in NAICS 515, 517, 518, and 519"~"Private software",
+         TRUE~category)) 
 ```
 
-"Office buildings, NAICS 518 and 519" is the only category in "investment" df which doesn't appear in "chain_investment" df.
+"Office buildings" is the only category in "investment" df which doesn't appear in "chain_investment" df.
 
 ```{r}
 cat <- chain_investment %>% count(category) %>% select(-n) %>% unlist()
-investment %>% filter(!category %in% cat) %>% count(category)
+investment %>% filter(!category %in% cat) %>% 
+  count(category)
 ```
+
+
+
 
 -----------------------------
 
@@ -257,65 +472,409 @@ An implicit price deflator is the ratio of the current-dollar value of a series,
 ```{r}
 ipd <- tuesdata$ipd
 DataExplorer::profile_missing(ipd)
-ipd %>% filter(is.na(gross_inv_ipd)) %>% count(category)
+```
+
+
+```{r}
+meta_inv <- investment%>%count(meta_cat)%>%select(-n)%>%unlist()
+ipd%>%filter(!meta_cat%in%meta_inv)%>%count(meta_cat)
+```
+
+
+```{r}
+ipd <- ipd%>%
+  mutate(meta_cat = case_when(meta_cat=="Total basic infrastructure" ~ "Basic",
+                              meta_cat=="Infrastructure"~"Total infrastructure",
+                              meta_cat=="Health care"~"Health",
+                                TRUE~meta_cat ))
+```
+
+
+```{r}
+ipd <- ipd %>%
+  mutate(category=case_when(category=="Private communications equipment in NAICS 515, 517, 518, and 519"~"Private communications equipment",
+                            category=="Private computers in NAICS 515, 517, 518, and 519"~"Private computers",
+                            category=="Office buildings, NAICS 518 and 519"~"Office buildings",
+                            category=="Private software in NAICS 515, 517, 518, and 519"~"Private software",
+         TRUE~category)) 
 ```
 
 
 60 categories are in the "Implicit Price Deflators" df
 
 ```{r}
-ipd %>% count(category)
+ipd_cats <-ipd %>% count(category)%>%unlist()
 ```
 
-comparing it with the "investment" and "chain investment" categories 6 of those are not listed as "ipd" categories:
+comparing it with the "investment" and "chain investment" categories, 6 of those have a slightly different name, the best wat to handle this for obtaining a unified data set made of the three sets is to have homogeneous values for the category variable.
 
+
+These are the 6 categories in *ipd* to be changed:
 ```{r}
 cat_investment <- investment%>%count(category)%>%select(-n)%>%unlist()
-ipd%>%filter(!category%in%cat_investment)%>%count(category)
+ipd_cats_to_be_renamed <- ipd%>%filter(!category%in%cat_investment)%>%count(category)%>%select(-n)%>%unlist()
+
+ipd_cats_to_be_renamed
 ```
 
 
-The data set contains:
+
+These 6 categories are in the *investment* data set and we want to use these names for the category variable for all the sets:
+
+```{r}
+selected_categories <- investment %>% filter(!category %in% ipd_cats) %>% count(category,group_num) %>% arrange(group_num)
+
+selected_categories
+```
+
+```{r}
+ipd <- ipd %>% 
+  mutate(category = case_when(
+    category == "Basic" ~ "Total basic infrastructure",
+    category == "Social" ~ "Total social infrastructure",
+    category == "Digital" ~ "Total digital infrastructure",
+    category == "Health care" ~ "Health",
+    category == "Communications structures" ~ "Private communications structures",
+    TRUE ~ category
+  ))
+```
+
+
+
+Let's see how `meta_cat` of these 6 categories perform:
+```{r message=FALSE, warning=FALSE, include=FALSE}
+total_inv_df <- ipd %>% 
+  
+  filter(category %in% selected_categories$category) %>%
+  count(category,meta_cat,year,gross_inv_ipd) %>%
+  group_by(year,meta_cat) %>%
+  summarize(total=ifelse(!is.na(round(sum(gross_inv_ipd))),round(sum(gross_inv_ipd)), 0)) %>%
+  filter(!total==0)
+
+
+plot4 <- total_inv_df %>% 
+  
+  ggplot(aes(x=factor(year), y=total, group=meta_cat)) +
+  geom_line(aes(color=meta_cat)) +
+  guides(color="none") +
+  geom_text(data=subset(total_inv_df,year==2017),
+            aes(x=factor(year),y=total, group=meta_cat, label=meta_cat),
+            check_overlap = FALSE,size=2.5,nudge_x = 1.5,nudge_y = 0,hjust=0.1) +
+  scale_y_log10() +
+  scale_x_discrete(expand = expansion(mult = c(0, .25)), breaks=seq(1947,2017,5)) +
+  labs(title="Group investment category of:",
+       subtitle="Total basic, digital and social infrastructure\nHealth and Private communications structures\n",caption="\nBEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
+       y="Total gross investment IPD", x="Year") +
+  ggthemes::theme_economist() +
+  theme(axis.text.x = element_text(angle=0,size=8,hjust=0),
+        axis.text.y = element_text(size=8,hjust=1),
+        axis.title.y = element_text(vjust=4),
+        axis.title.x = element_text(vjust=-2),
+        axis.ticks.x = element_line(size=1,color="darkred"),
+        axis.ticks.y = element_line(size=0.2,color="darkred"),
+        axis.ticks.length=unit(.2, "cm"),
+        plot.title.position = "plot",
+        plot.caption = element_text(vjust=-5,size=6),
+        plot.caption.position = "plot",
+        plot.subtitle = element_text(vjust=-2,hjust=0),
+        panel.grid = element_line(),
+        panel.background = element_blank(), 
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+        plot.background = element_rect(fill = "grey90",colour = "grey",size = 2)
+       )
+```
+
+
+```{r plot4, message=FALSE, warning=FALSE, height = '100%', width = '100%',out.width="100%", fig.align="center"}
+plot4
+```
+
+
+```{r}
+total_inv_df <- ipd %>% 
+  count(category,meta_cat,year,gross_inv_ipd) %>% 
+  group_by(year,meta_cat) %>%
+  summarize(total=ifelse(!is.na(round(sum(gross_inv_ipd))),round(sum(gross_inv_ipd)), 0)) %>%
+  ungroup() %>%
+  filter(!total==0) 
+```
+
+```{r}
+library(extrafont)
+library(showtext)
+showtext_auto()
+showtext_opts(dpi = 320)
+font_add_google("Roboto Condensed", "roboto condensed")
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+update_geom_defaults("text", list(family="roboto condensed",size=6))
+
+
+plot5 <- total_inv_df %>% 
+  filter(!meta_cat=="Total infrastructure") %>%
+  
+  ggplot(aes(x=factor(year), y=total,group=meta_cat)) +
+  geom_line(aes(color=meta_cat)) +
+  guides(color="none") +
+  
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Transportation"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Transportation",
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Basic"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Basic",
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Health"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Health",
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Public safety"),
+            aes(x=factor(year),y=total,group=meta_cat),label="\nEducation, Social,\nElectric Power, Public safety",
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  
+
+  
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Digital"),
+            aes(x = factor(year), y = total, group = meta_cat,label="Digital"),
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Power"),
+            aes(x = factor(year), y = total, group = meta_cat,label="\nPower, Natural gas, Conserv. dev"),
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+
+
+  
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="Water supply"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Water supply, Sewer & waste",
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  geom_text(data=subset(total_inv_df,year==2017 & meta_cat=="GDP"),
+            aes(x=factor(year),y=total,group=meta_cat),label="GDP",
+            check_overlap = FALSE,size=2,nudge_x = 1,hjust=0) +
+  
+
+  geom_text(data=subset(total_inv_df,year==1968 & meta_cat=="Health"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Health",
+            check_overlap = FALSE,size=4,nudge_x = -9,nudge_y=0.3,hjust=0,color="red") +
+  annotate(geom = "curve", x = "1962", y = 185, xend = "1968", yend = 121, curvature = -.2, arrow = arrow(length = unit(2, "mm"))) +
+  geom_vline(xintercept = "1968",size=0.2,color="darkred")+
+  
+  geom_text(data=subset(total_inv_df,year==1993 & meta_cat=="Electric power"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Electric Power",
+            check_overlap = FALSE,size=4,nudge_x = -9,nudge_y=0.3,hjust=0,color="red") +
+  annotate(geom = "curve", x = "1990", y = 500, xend = "1993", yend = 335, curvature = -.2, arrow = arrow(length = unit(2, "mm"))) +
+  geom_vline(xintercept = "1993",size=0.2,color="darkred")+
+  
+  geom_text(data=subset(total_inv_df,year==1978 & meta_cat=="Digital"),
+            aes(x=factor(year),y=total,group=meta_cat),label="Digital",
+            check_overlap = FALSE,size=4,nudge_x = -3.5,nudge_y=0,hjust=0,color="red") +
+  geom_vline(xintercept = "1978",size=0.2,color="darkred",linetype="dashed")+
+  
+  scale_y_log10() +
+  scale_x_discrete(expand = expansion(mult = c(0, .3)), breaks=c(1947,1952,1957,1962,1968,1973,1978,1983,1988,1993,1998,2003,2008,2013,2017)) +
+  
+  #labs(title="IPDs Group investment categories",subtitle="values of the implicit price deflator ratio\n",caption="\nBEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\n \nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
+  
+       labs(y="Total gross investment IPD", x="Year") +
+  annotate(geom = 'segment',y = Inf, yend = Inf, x = -Inf,xend = Inf, color="#FF7F00", size = 4) +
+  #annotate("rect", xmin = 3, xmax = 4.2, ymin = 12, ymax = 21,alpha = .2) +
+  ggthemes::theme_economist() +
+  theme(text = element_text(family="roboto condensed"),
+        axis.text.x = element_text(angle=0,size=9,hjust=0),
+        axis.text.y = element_text(size=9,hjust=1),
+        axis.title.y = element_text(vjust=4),
+        axis.title.x = element_text(vjust=-3,hjust=0.5),
+        axis.ticks.x = element_line(size=1,color="darkred"),
+        axis.ticks.y = element_line(size=0.2,color="darkred"),
+        axis.ticks.length=unit(.2, "cm"),
+        plot.title.position = "panel",
+        plot.title = element_text(size=24,color="#FFD700"),
+        plot.subtitle = element_text(face="bold",vjust=-2,hjust=0),
+        plot.caption = element_text(vjust=-5,size=6,hjust=1),
+        plot.caption.position = "panel",
+        panel.grid.major.x = element_line(size=0.1),
+        #panel.background = element_blank(), 
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+        plot.background = element_rect(fill = "#F8F8FF",colour ="#F8F8FF" ,size = 2) # "#FF7F00" (orange)
+       )
+```
+
+
+
+
+```{r plot5, message=FALSE, warning=FALSE, height = '100%', width = '100%',out.width="100%", fig.align="center"}
+
+
+plot5
+```
+
+```{r}
+library(patchwork)
+library(ggpubr)
+library(cowplot)
+```
+
+
+
+```{r}
+
+img <- png::readPNG('images.png')
+
+ 
+
+graphics <- ggarrange(plot5) 
+
+final_plot <- annotate_figure(graphics,
+               top = text_grob("IPDs Group investment categories\n", 
+                               color = c("#FFD700"), face = "bold", size = 34,
+                               family="roboto condensed"),
+               bottom = text_grob("BEA: measurement of infrastructure in the U.S. National Economic Accounts (NEAs)\nInfographic: @fgazzelloni\n DataSource: TidyTuesday Week33: BEA Infrastructure Investment",
+                                  color = "#6C7B8B",family="roboto condensed",
+                                  hjust = 0.5, x = 0.5, face = "bold.italic", size = 10),
+               left = text_grob("", color = c("#778899"), rot = 90,size=10),
+               right = text_grob(bquote(""), color=c("#778899"),rot = 90,size=10),
+               fig.lab = "TidyTuesday week33", fig.lab.face = "bold.italic",fig.lab.size=8,
+               fig.lab.pos="bottom.right"
+)
+
+final_plot <- final_plot +
+  annotate(geom = "text", label="values of the implicit price deflator ratio",x = 0.25, y = 0.92, 
+           colour = "black", face="bold",size = 7,family="roboto condensed") +
+  annotate(geom = "text", label="Digital just started in 1978 and followed \nwith a deep decline during the last 40 years",x = 0.70, y = 0.68, colour = "#FF7F00", size = 5,family="roboto condensed") 
+
+  
+
+final <- ggdraw() +
+  draw_image(img,  x = -0.4, y = -0.48, scale = .15) +
+  draw_plot(final_plot)
+
+final
+ showtext.auto(enable = FALSE) 
+```
+
+
+```{r}
+ragg::agg_png("w33_bea2.png",
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+```
+
+
+
+
+
+Investment on	Electric power only appear starting from 1993 with a ratio of 336:
+
+```{r}
+list<-total_inv_df %>% filter(year==1992)%>%count(meta_cat)%>%select(-n)%>%unlist()
+total_inv_df %>% filter(year==1993,!meta_cat%in%list)
+```
+
+
+meta_cat are the Group category of investment, there are 4 values which are different within the sets:
+
+- Health care = Health
+- Infrastructure = Total infrastructure
+- Basic = Total basic infrastructure
+- GDP 
+
+We need to add GDP as further meta_cat for both investment and chain_investment sets, and chenge the other three values into common values as shown above.
+
+```{r}
+inv_meta_cats <- investment %>% count(meta_cat) %>% select(-n) %>% unlist()
+
+ipd %>% filter(!meta_cat %in% inv_meta_cats) %>% count(meta_cat)
+```
+
+
+
+GDP is the only left meta_cat category, that it is not present in the other sets.
+```{r}
+ipd %>% filter(!meta_cat %in% inv_meta_cats) %>% count(meta_cat)
+```
+
+What about category variable?
+What are the differences in ipd set when compared with the other two?
+
+As seen investment and chain_investment sets have the same category variables except for one variable which is "Office buildings", so next step is to find the differences of this vector in ipd set:
+
+```{r}
+cat_inv <- investment %>% count (category) %>% select(-n) %>% unlist
+ipd %>% filter(!category %in% cat_inv) %>% count(category)
+```
+
+we need to convert these values in ipd set:
+
+- Basic = Total basic infrastructure
+- Communications structures = Private communications structures
+- Digital = Total digital infrastructure
+- GDP 
+- Health care = Health
+- Social = Total social infrastructure
+
+
+
+Finally, GDP is the category group number 0 which is not in investment and chain investment sets, but only in IPD. While "Office buildings" is only in investment.
+
+```{r}
+ipd <- ipd %>% 
+  mutate(category = case_when(
+    category=="Basic"~"Total basic infrastructure",
+    category=="Communications structures"~"Private communications structures",
+    category=="Digital"~"Total digital infrastructure",
+    category=="Health care"~"Health",
+    category=="Social"~"Total social infrastructure",
+    TRUE~category))
+```
+
+
+```{r}
+ipd %>% filter(!category %in% cat_inv) %>% count(category)
+```
+
+
+The new data sets will contain the 4 common variables plus these other three:
 
 - gross_inv:	Gross investment in millions of USD
 - gross_inv_chain:	Gross investment (chained 2021 dollars) in millions of USD
 - gross_inv_ipd: Implicit Price Deflators (IPDs)
 
-```{r}
-investment_raw <- investment%>%
-  inner_join(chain_investment,by=c("category","meta_cat","group_num","year")) %>%
-  inner_join(ipd,by=c("category","meta_cat","group_num","year"))
-```
+
+The Implicit Price Deflators (IPDs) is obtained as an index result of: 
+
+    [ (gross_inv *100) / (gross_inv_chain *100) ] *100
+    
+    
+The ipd set contains some missing values, these values are the results of 0 investments for some of the selected categories within the years.
 
 ```{r}
-DataExplorer::profile_missing(investment_raw)
+ipd %>% filter(is.na(gross_inv_ipd)) %>% count(meta_cat,category)
 ```
 
+Let's calculate the **gross_inv_ipd** vector with the formula, assigning its value to a different name vector and then check the missing values. 
+To do this we need to join the three sets together:
 
-42 Category of investment: 
+
 ```{r}
-investment_raw%>%count(category)
+investment_full <- investment%>%
+  full_join(chain_investment,by=c("category","meta_cat","group_num","year")) %>%
+  full_join(ipd,by=c("category","meta_cat","group_num","year")) %>%
+  #filter(meta_cat=="GDP"| category=="Office buildings") %>% 
+  mutate(gross_inv_chain = if_else(category=="Office buildings",0,gross_inv_chain),
+         gross_inv_ipd = if_else(gross_inv<=0,0,gross_inv_ipd),
+         gross_inv_ipd2 = if_else(gross_inv_chain==0,0,((gross_inv/100)/(gross_inv_chain/100))*100),
+         gross_inv_ipd2 = round(gross_inv_ipd2,2))
+  #DataExplorer::profile_missing()
+  
 ```
 
 
-14 Group category of investment:
-```{r}
-investment_raw%>%count(meta_cat)
-```
-
-16 Group number of investment
-```{r}
-investment_raw%>%count(group_num)
-```
 
 
 
-Gross investment in millions of USD
-Gross investment (chained 2021 dollars) in millions of USD
-Implicit Price Deflators (IPDs) 
-```{r}
-investment_raw%>%count(year,gross_inv,gross_inv_chain,gross_inv_ipd)
-```
+
 
 
 
