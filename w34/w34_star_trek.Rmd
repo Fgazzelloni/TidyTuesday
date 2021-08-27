@@ -1,0 +1,268 @@
+---
+title: "star_trek"
+author: "FG"
+date: "8/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2021, week = 34)
+tidytuesdayR::readme(tuesdata)
+```
+
+## Designing Speech Interactions from the Imagined Ideal of Star Trek
+voice user interfaces (VUIs) like Alexa reveals mismatches between current designs and user expectations
+The analysis study voice interactions with the Enterprise’s computer and compare them to current interactions
+```{r}
+computer <- tuesdata$computer
+head(computer,3)
+DataExplorer::profile_missing(computer)
+```
+
+```{r}
+df <- computer %>%
+  select(char,line,type,pri_type,nv_resp:error) %>% #count(char)
+  mutate(char=if_else(str_detect(char,"Computer"),"Computer",char),
+         type=if_else(str_detect(type,"command"),"Command",type),
+         type=if_else(str_detect(type,"question"),"Question",type))
+
+```
+
+
+```{r}
+df %>% 
+  group_by(char) %>%
+  summarize(type,nv_resp) %>%
+  ungroup() %>%
+  ggplot(aes(y=char,x=type,z=nv_resp)) +
+  stat_summary_hex(alpha=0.8,bins=50)+
+  scale_fill_viridis_c()+
+  labs(fill = "char",title = "type")+
+  theme(axis.text.x = element_text(angle=90,size=6))
+  
+```
+
+
+```{r}
+library(extrafont)
+loadfonts()
+```
+
+
+```{r warning=FALSE}
+final <- df %>% #count(type,nv_resp,sort=TRUE)%>%
+  ggplot(aes(x=fct_reorder(sort(type,decreasing = TRUE),nv_resp),group=nv_resp)) +
+  geom_histogram(aes(fill=nv_resp),stat="count",position ="stack")+ #position_dodge(width=0))+
+  coord_flip()+
+  scale_fill_viridis_d()+
+  labs(title="Type of words when the computer completes the query but without speaking a response", 
+       subtitle="False or True?",
+       caption="Infographic: @fgazzelloni\n DataSource: TidyTuesday Week34:Star Trek Voice Commands,SpeechInteraction.org",
+       fill="Response",
+       y="N°",x="Word type") +
+  ggthemes::theme_solarized()+
+  theme(text = element_text(family="Impact"),
+        axis.text.x = element_text(angle=0,size=10),
+        axis.text.y = element_text(angle=0,size=10),
+        axis.title.x = element_text(size=14),
+        axis.title.y = element_text(size=14),
+        plot.title.position = "plot",
+        plot.title = element_text(face="bold",size=20),
+        plot.subtitle = element_text(face="bold",size=14),
+        plot.caption = element_text(size=10),
+        plot.caption.position = "plot")
+```
+
+```{r}
+ragg::agg_png("w34_star_trek.png",
+              res = 320, width = 14, height = 8, units = "in")
+final
+
+dev.off()
+```
+
+```{r}
+library(scales)
+library(ggbump)
+library(extrafont)
+library(showtext)
+library(cowplot)
+library(ggstream)
+library(colorspace) 
+library(ggpubr)
+library(ggbump)
+library(ggimage)
+library(magick)
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+# read the image, attach the Tidytuesday logo and save it --------------------------
+library(ggimage)
+library(magick)
+
+
+tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+img <-image_read("1200px-Star_Trek_TNG_logo.svg.png")
+
+
+tidy_final <- image_read("w34_star_trek.png")
+attached_logo <- image_composite(tidy_final, tidy_logo,
+                                 operator="atop",
+                                 gravity="southwest") 
+image_write(attached_logo, path = "w34_star_trek.png", format = "png") 
+tidy_final2 <- image_read("w34_star_trek.png")
+
+attached_logo2 <- image_composite(tidy_final2, img,
+                                 operator="atop",
+                                 gravity="northeast") 
+image_write(attached_logo, path = "w34_star_trek.png", format = "png") 
+
+
+
+```
+
+
+
+
+
+```{r}
+library("ggmosaic")
+```
+
+```{r}
+final2 <- df %>% 
+  select(type,char_type) %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(type, char_type), fill = type)) +
+  labs(title="Type of request by count Person or Computer?",
+       x="",fill="Type of interaction",
+       caption="Infographic: @fgazzelloni\n DataSource: TidyTuesday Week34:Star Trek Voice Commands,SpeechInteraction.org")+
+  theme(text=element_text(family="Roboto Condensed"),
+  axis.text.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_text(color="white",size=10),
+  axis.ticks.x = element_line(color="white",size=1),
+  panel.background = element_blank(),
+  panel.border = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  plot.background = element_rect(color="darkgrey",fill="black"),
+  plot.title = element_text(color="white",size=30),
+  legend.position = "left",
+  legend.text = element_text(color="white"),
+  legend.background = element_rect(color="darkgrey",fill="black"),
+  plot.caption = element_text(color="white")
+)
+```
+
+
+
+
+```{r}
+ragg::agg_png("w34_star_trek2.png",
+              res = 320, width = 14, height = 8, units = "in")
+final2
+
+dev.off()
+```
+
+```{r}
+
+# read the image, attach the Tidytuesday logo and save it --------------------------
+library(ggimage)
+library(magick)
+
+
+tidy_logo<-image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+tidy_final <- image_read("w34_star_trek2.png")
+attached_logo <- image_composite(tidy_final, tidy_logo,
+                                 operator="atop",
+                                 gravity="southwest") 
+image_write(attached_logo, path = "w34_star_trek2.png", format = "png") 
+```
+
+
+```{r}
+
+img <-image_read("white_startrek.png")
+
+tidy_final2 <- image_read("w34_star_trek2.png")
+
+attached_logo2 <- image_composite(tidy_final2, img,
+                                 operator="atop",
+                                 gravity="northeast") 
+image_write(attached_logo2, path = "w34_star_trek2.png", format = "png") 
+
+
+```
+
+
+
+
+
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+```
+
+
+[dummy](https://www.marsja.se/create-dummy-variables-in-r/)
+
+```{r}
+df %>% select(char,type,nv_resp) %>%
+  #mutate(nv_resp=factor(nv_resp)) %>%
+  recipe(char~.) %>%
+  step_dummy(all_nominal_predictors(),one_hot = TRUE)%>%
+  prep() %>%
+  bake(df) %>%
+  group_by(char,nv_resp) %>%
+  summarise_all(.funs = sum) %>%
+  ungroup() %>%
+  pivot_longer(cols=type_Alert:type_Wake.Word,names_to="type",values_to="values") %>%
+  mutate(type=gsub("^type_","",type)) %>%
+  group_by(char,nv_resp,type) %>%
+  summarize(tot=sum(values)) %>%
+  ungroup() %>%
+  
+  ggplot() +
+  geom_mosaic(aes(x = product(type, char), fill = nv_resp)) +
+  #geom_text(aes(x=nv_resp,y=type,label=type))+
+  theme(
+  axis.text.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.title.y = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  plot.background = element_blank(),
+  legend.position = "left"
+)
+```
+
+
+
+
+
