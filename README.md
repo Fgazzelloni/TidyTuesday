@@ -40,10 +40,10 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 30 | `2021-07-20` | [US Droughts](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-20/readme.md) | ![png](/w30/w30_drought.png)
 | 31 | `2021-07-27` | [Olympic Medals](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-27/readme.md) | ![png](/w31/w31_olympics.png)
 | 32 | `2021-08-03` | [Paralympic Medals](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-03/readme.md) | ![png](/w32/w32_paralympic.png)
-| 33 | `2021-08-10` | [BEA Infrastructure Investment](data/2021/2021-08-10/readme.md) | ![png](/w33/w33_bea2.png)
-| 34 | `2021-08-17` | [Star Trek Voice Commands](data/2021/2021-08-17/readme.md) | ![png](/w34/w34_star_trek.png)
-| 35 | `2021-08-24` | [Lemurs](data/2021/2021-08-24/readme.md) | ![png](/w35/w35_lemurs.png)
-| 36 | `2021-08-31` | [Bird Baths](data/2021/2021-08-31/readme.md) | ![png](/w36/w36_bird_baths.png)
-| 37 | `2021-09-07` | [Formula 1 Races](data/2021/2021-09-07/readme.md) | ![png](/w37/w7_formula1.png)
+| 33 | `2021-08-10` | [BEA Infrastructure Investment](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-10/readme.md) | ![png](/w33/w33_bea2.png)
+| 34 | `2021-08-17` | [Star Trek Voice Commands](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-17/readme.md) | ![png](/w34/w34_star_trek.png)
+| 35 | `2021-08-24` | [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) | ![png](/w35/w35_lemurs.png)
+| 36 | `2021-08-31` | [Bird Baths](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-31/readme.md) | ![png](/w36/w36_bird_baths.png)
+| 37 | `2021-09-07` | [Formula 1 Races](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-07/readme.md) | ![png](/w37/w7_formula1.png)
 
 
