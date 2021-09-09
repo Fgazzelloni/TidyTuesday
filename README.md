@@ -43,5 +43,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 33 | `2021-08-10` | [BEA Infrastructure Investment](data/2021/2021-08-10/readme.md) | ![png](/w33/w33_bea2.png)
 | 34 | `2021-08-17` | [Star Trek Voice Commands](data/2021/2021-08-17/readme.md) | ![png](/w34/w34_star_trek.png)
 | 35 | `2021-08-24` | [Lemurs](data/2021/2021-08-24/readme.md) | ![png](/w35/w35_lemurs.png)
+| 36 | `2021-08-31` | [Bird Baths](data/2021/2021-08-31/readme.md) | ![png](/w36/w36_bird_baths.png)
+| 37 | `2021-09-07` | [Formula 1 Races](data/2021/2021-09-07/readme.md) | ![png](/w37/w7_formula1.png)
 
 
