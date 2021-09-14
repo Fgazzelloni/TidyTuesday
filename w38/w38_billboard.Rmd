@@ -1,0 +1,172 @@
+---
+title: "Billboard - Week38"
+author: "Federica Gazzelloni"
+date: "14 September 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load libraries:
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+
+Load data:
+
+```{r}
+billboard <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-14/billboard.csv')
+audio_features <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-14/audio_features.csv')
+
+```
+
+
+Data wrangling and saving data on a csv file:
+
+```{r}
+my_df <- billboard %>%left_join(audio_features,by=c("song","song_id","performer"))%>%
+  select(-url,-instance,-key,-mode,-valence,-tempo,-time_signature,-previous_week_position,-starts_with("spotify"))
+
+#write_csv(my_df,here::here("w38/my_df.csv"))
+my_df <- read.csv(here::here("w38/my_df.csv"))
+
+my_df
+```
+
+
+I'd like to study the "speackness" variable:
+
+```{r}
+summary(my_df$speechiness)
+
+DataExplorer::profile_missing(my_df)
+```
+
+Some values are missing (about 13% of the total), we leave them out for this visualization.
+
+```{r}
+my_df <- my_df%>%drop_na(speechiness)
+```
+
+Load fonts to use in the `theme()`:
+
+```{r}
+library(extrafont)
+#fonts()
+```
+
+Make a plot:
+
+```{r message=FALSE, warning=FALSE}
+plot <- my_df %>%#pull(peak_position)%>%summary(peak_position)
+  mutate(speechiness_class=case_when(speechiness<=0.33~"Most likely music",
+                                            speechiness>0.33&speechiness<=0.66~"Contain music and speech",
+                                            speechiness>0.66&speechiness<=0.75~"Probably spoken words",
+                                            speechiness>0.75~"Exclusively speech-like"))%>%
+  mutate(peak_position_class=case_when(peak_position<=15~"low",
+                                            peak_position>15&peak_position<=30~"medium",
+                                            peak_position>30&peak_position<=50~"high",
+                                            peak_position>=50~"top"))%>%
+  
+  ggplot(aes(x=-log10(speechiness)))+ #aes(x=speechiness))+
+  geom_histogram(binwidth=0.03,aes(color=factor(peak_position_class),fill=factor(peak_position_class)))+
+  #guides(color="none",fill="none")+
+  #scale_x_reverse()+
+  labs(subtitle="The Billboard Hot 100 is the music industry standard record chart in the United States for songs, \npublished weekly by Billboard magazine. (Billboard Top 100 - Wikipedia)\nCharts show the `Speechiness` distributions based on peak positions on radio play, and online streaming in the United States.\n",
+       color="Peak position",fill="Peak position",
+       x="Speechiness values (Log10-tranformation)",y="")+
+  facet_wrap(~speechiness_class,scales="free")+
+  theme(text = element_text(family="Luminari",color="midnightblue",face = "bold"),
+        plot.subtitle = element_text(family="Luminari",color="midnightblue",size=14,vjust=-0.5),
+        legend.position = "top", #c(0.1,0.85),
+        legend.background = element_blank(),
+        legend.text = element_text(face = "bold",color="midnightblue",size=14),
+        plot.background = element_blank(),
+        panel.background = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(face = "bold",color="midnightblue",size=14),
+        axis.text = element_text(face = "bold",color="midnightblue",size=14)
+        )
+```
+
+
+Add some features such as phrases of explanation, add some logos and other little information:
+
+
+```{r}
+library(ggpubr)
+graphics <- ggarrange(plot)+
+  theme(plot.background = element_rect(fill=NA, color = NA))
+
+final_plot <- annotate_figure(graphics,
+                              top = text_grob("Top 100 Billboard",
+                                              color = "#9A32CD", face = "bold", size = 45,
+                                              family = "Luminari"),
+                              bottom = text_grob("Infographics Federica Gazzelloni DataSource: Top 100 Billboard from Data.World",
+                                                 color = "black",family = "Luminari",
+                                                 hjust = 0.5, x = 0.5, face = "bold.italic", size = 15),
+                              left = text_grob("#TidyTuesday week38: Top 100 Billboard", color = c("#778899"), rot = 90,size = 30),
+                              right = text_grob(bquote("Top 100 Billboard MUSIC 🎼"), color = c("#778899"),rot = 90,size = 30),
+                              fig.lab = "TidyTuesday week38", fig.lab.face = "bold.italic",fig.lab.size = 12,
+                              fig.lab.pos = "bottom.right"
+)
+
+
+
+final_plot <-
+  final_plot +
+
+  annotate(geom = "text", label = "The Billboard Hot 100 \nwas first released in August 1958",
+           x = 0.11, y = 0.74,colour = "#00D2BE",size = 4,family = "Luminari") +
+  annotate(geom = "curve", x = 0.07, xend = 0.09, y = 0.85, yend = 0.78, colour = "#00D2BE", curvature = .3, arrow = arrow(length = unit(2, "mm")),family = "Luminari",size=1.5) +
+
+  
+  
+  annotate(geom = "text", label = "a good balance hits \nin all positions",
+           x = 0.3, y = 0.6,colour ="#6B8E23",size = 4,family = "Luminari") +
+  annotate(geom = "curve", x = 0.25, xend = 0.28, y = 0.53, yend = 0.69, colour = "#6B8E23", curvature = -.3, arrow = arrow(length = unit(2, "mm")),family = "Luminari",size=1.5) +
+
+  
+  
+  annotate(geom = "text", label = "Peak positions high \nare most likely found with \n`Most likely music`",
+           x = 0.18, y = 0.63,colour = "#FF4040",size = 4,family = "Luminari") +
+  annotate(geom = "curve", x = 0.11, xend = 0.10, y = 0.63, yend = 0.70, colour = "#FF4040", curvature = -.3, arrow = arrow(length = unit(2, "mm")),family = "Luminari",size=1.5) +
+  
+  
+
+  annotate(geom = "text", label = "all music hits \nthe top high with higher frequency",x = 0.22, y = 0.25, colour = "#9A32CD", size = 5,family = "Luminari") +
+
+  annotate(geom = "text", label = "MUSIC 🎼", x = 0.18, y = 0.03, colour = "red", size = 7,family = "Luminari")+
+
+
+  annotate(geom = "text", label = "worthy speech hit \nthe top-high\n without music \nvery rarely", x = 0.62, y = 0.34, colour = "#FF7256", size = 5,family = "Luminari") +
+  annotate(geom = "curve", x = 0.68, xend = 0.64, y = 0.52, yend = 0.41, colour = "#FF7256", curvature = -.3, arrow = arrow(length = unit(2, "mm")),family = "Luminari",size=1.5)
+
+library(ggimage)
+library(magick)
+library(cowplot)
+
+
+img <- image_read(here::here("w38/colored_Billboard_logo.png"))
+img2 <- image_read(here::here("w38/Billboard_Hot_100_logo.png"))
+
+final <- ggdraw() +
+  draw_plot(final_plot) +
+  draw_image(img, x = 0.85, y = 0.39,width = 0.12)+
+  draw_image(img2, x = 0.1, y = -0.2,width = 0.12)
+```
+
+Save final plot
+
+```{r}
+ragg::agg_png(here::here("w38/w38_billboard.png"),
+              res = 320, width = 16, height = 8, units = "in")
+final
+
+dev.off()
+```
+
