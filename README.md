@@ -45,5 +45,5 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 35 | `2021-08-24` | [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) | ![png](/w35/w35_lemurs.png)
 | 36 | `2021-08-31` | [Bird Baths](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-31/readme.md) | ![png](/w36/w36_bird_baths.png)
 | 37 | `2021-09-07` | [Formula 1 Races](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-07/readme.md) | ![png](/w37/w37_formula1.png)
-
+| 38 | `2021-09-14` | [Billboard Top 100](dhttps://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-14/readme.md) | ![png](/w38/w38_billboard.png)
 
