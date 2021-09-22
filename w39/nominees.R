@@ -1,26 +1,14 @@
-#week 39 nominees
+# TidyTuesday
+# week 39 nominees EMMYS'
 
 # load libraries --------------
-library(tidytuesdayR)
+
 library(tidyverse)
-library(tidymodels)
-tidymodels_prefer()
 
-library(forcats)
-
-library(DataExplorer)
-library(ggthemes)
-library(hrbrthemes)
-library(viridis)
 library(extrafont)
-
 library(showtext)
 #font_families_google()
 font_add_google("Roboto Condensed","Roboto Condensed")
-
-
-library(RColorBrewer)
-library(ggwordcloud)
 
 library(patchwork)
 library(cowplot)
@@ -30,8 +18,10 @@ library(cowplot)
 nominees <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-21/nominees.csv')
 head(nominees)
 
+# data wrangling -------
+# arrange the set to have the count of the types
+# add a column with the icons for types
 
-# arrange the set ----
 my_df <-
   nominees %>%
   filter(year>=2015) %>%
@@ -46,6 +36,7 @@ my_df <-
 
 
 
+# set a special vector for the facet strip names with the type counts
 
 type_c <- c("HBO_2015"= "219 to 140",
             "HBO_2016"= "198 to 75",
@@ -56,36 +47,26 @@ type_c <- c("HBO_2015"= "219 to 140",
             "HBO_2021"= "261 to 66") 
 
 
-library(httr)
-library(tidyverse)
+# make the plot -------
+
 library(waffle)
 library(ggtext)
-library(ggpomological)
+library(ggthemes)
 
 
-# make the plot -------
-library(ggimage)
-
-
-
-plot <- ggplot(my_df, aes(fill = type, values = n,label=img)) +
-  #geom_waffle(color = "white", size = .25, n_rows = 10, flip = TRUE) +
-  #geom_pictogram(aes(label=img), color = "white", size = .25, n_rows = 10, flip = TRUE) +
-  #scale_label_pictogram(name = NULL) +
+plot <- ggplot(my_df, aes(fill = type, values = n,label = img)) +
   facet_wrap(distributor_lab~year, nrow = 1, strip.position = "bottom",
              labeller = labeller(distributor_lab  = as_labeller(type_c))) +
   stat_waffle(geom = "richtext", fill = NA, label.color = NA, flip = TRUE, n_rows = 10) +
-  #geom_image(aes(image=img, color = type), size=.03)+
   scale_x_discrete() + 
-  scale_y_continuous(labels = function(x) x * 10, # make this multiplyer the same as n_rows
-                     expand = c(0,0)) +
+  scale_y_continuous(labels = function(x) x * 10, expand = c(0,0)) +
   ggthemes::scale_fill_fivethirtyeight(name=NULL) +
   coord_equal() +
   labs(title="\n",subtitle="\n",
     caption="Source: The data this week comes from emmys.com") +
   theme_minimal(base_family = "Roboto Condensed") +
   theme(text=element_text(family = "Roboto Condensed"),
-        axis.ticks.y = element_line(),
+        axis.ticks.y = element_blank(),
         axis.title.y = element_blank(),
         axis.title.x = element_blank(),
         axis.text.y = element_blank(),
@@ -98,27 +79,22 @@ plot <- ggplot(my_df, aes(fill = type, values = n,label=img)) +
         plot.background = element_rect(color="#F0F8FF", fill="#F0F8FF"),
         plot.caption.position = "panel",
         plot.caption = element_text(family = "Roboto Condensed",color= "grey40", face="bold",size=30, hjust=0,vjust=-1)) 
-  #guides(fill = guide_legend(reverse = TRUE))
-#guides(fill = guide_legend(override.aes = list(size = 5, shape = c(utf8ToInt("F"), utf8ToInt("K"), utf8ToInt("G"))))) +
 
 
-#title = "Cassava <img src='asset/cassava.png' width='20'/> and Sweet Potato <img src='asset/sweet_potato.png' width='20'/> Yields in West Java",
-#("Winner <img src='w39/emmy_winner.png' width='12'/>","Nominee <img src='w39/emmy_nom.png' width='12'/>")
-#plot
 #------------finish touches
 
 library(ggimage)
 library(magick)
 library(cowplot)
 
-#heat_map <- image_read(here::here("w36/heat_map.png"))
-
-#plot <- ggdraw() + draw_image(heat_map)
 
 library(ggpubr)
 
 graphics <- ggarrange(plot) +
   theme(plot.background = element_rect(fill = "#F0F8FF", color = "#F0F8FF"))
+
+
+# annotate the plot
 
 final_plot <- annotate_figure(graphics,
                               top = text_grob("EMMY AWARD WINNERS AND NOMINEES",
@@ -150,6 +126,8 @@ final_plot <-
          x = 0.32, y = 0.1,colour = "grey50",size = 8,family = "Roboto Condensed") 
 
 
+# add the images for the legend keys 
+
 imgWin <- image_read(here::here("w39/emmy_winner.png"))
 imgNom <- image_read(here::here("w39/emmy_nom.png"))
 imgHBO <- image_read(here::here("w39/hbo.png"))
@@ -162,7 +140,7 @@ final <- ggdraw() +
 
 
 
-## Save final plot ----
+## save final plot ----
 
 ragg::agg_png(here::here("w39/w39_nominees.png"),
               res = 320, width = 12, height = 14, units = "in")
