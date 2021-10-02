@@ -13,6 +13,7 @@ tidymodels_prefer()
 library(extrafont)
 #fonts()
 library(RColorBrewer)
+library(patchwork)
 
 #----Load Data----
 # TidyTuesday week40 datasets
@@ -110,7 +111,7 @@ ggcombo <- function(data1,data2,data3){
   plot_mac <- ggbar_cat(data2,set2,leg_mac,1,cut_colors2)
   plot_mic <- ggbar_cat(data3,set3,leg_mic,2,cut_colors3)
   
-  #library(patchwork)
+  require(patchwork)
   plot_fin <- plot_fin +
     labs(title = "\n",subtitle = "\n")
   
@@ -239,3 +240,8 @@ attached_logo <- image_composite(tidy_final, tidy_logo,
                                  gravity = "southeast")
 
 image_write(attached_logo, path = "w40_ep.png", format = "png")
+
+
+
+
+
