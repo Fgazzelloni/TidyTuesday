@@ -42,7 +42,7 @@ my_df$salary_level <- factor(my_df$salary_level, # Relevel group factor
 
 theme_nurses <- xkcd::theme_xkcd() +
   theme(text = element_text(color = "grey80",family = "Comic Sans MS"),
-        plot.title = element_text(hjust = 0.5,size = 22,face = "bold"),
+        plot.title = element_text(hjust = 0.5,size = 24,face = "bold"),
         plot.title.position = "plot",
         plot.caption = element_text(family = "Comic Sans MS"),
         plot.subtitle = element_text(hjust = 0.5),
@@ -68,8 +68,9 @@ stair_sal <- my_df %>%
   geom_col(width = 1) +
   labs(fill = "Salary level",
        x = "Years",y = "Cumulate annual median salaries by salary level",
-       title = "Did the Nurses Annual Salary changed since 1998?",
-       subtitle = " ") +
+       title = "How much should salary increase per year?",
+       subtitle = "Nurses' annual median salary values by 4 levels
+        ") +
   scale_x_discrete(breaks = seq(1998,2020,3)) +
   scale_y_continuous(labels = scales::number_format(scale = 1/1000000,suffix = "M",accuracy = 1)) +
   scale_fill_manual(limits = c("low", "medium","high","top high"),
@@ -80,7 +81,7 @@ stair_sal <- my_df %>%
                     values = RColorBrewer::brewer.pal(4,"Spectral")) +
   guides(fill = guide_legend(ncol = 4,title.position = "left")) +
   theme_nurses +
-  theme(legend.position = c(0.5,1)) +
+  theme(legend.position = c(0.5,0.99)) +
   annotate("text", x = 5, y = 1100000,label = "Medium Salary from 35,000 to 60,000",family = "xkcd" ) +
   annotate("text", x = 20, y = 300000,label = "Top High up to 118,500",family = "xkcd" ) +
   annotate("text", x = 20, y = 160000,label = "started in 2008",family = "xkcd" ) +
@@ -117,32 +118,33 @@ facet_sal <- salaries_by_year %>%
   guides(fill = guide_legend(ncol = 2,title.position = "top", title.hjust = 0.5)) +
   facet_wrap(~years,scale = "free_x") +
   theme_nurses +
-  theme(legend.position = c(0.79,0.07),
+  theme(legend.position = c(0.80,0.07),
         strip.background = element_rect(color = "grey40",fill = "grey40"),
         strip.text = element_text(color = "grey80",face = "bold"))
 
 
+img_nurse <- image_read(here::here("/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w41/nurse.png"))
+img_dataworld <- image_read(here::here("/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w41/dataworld.png"))
+img_bls <- image_read(here::here("/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w41/bls.png"))
+tidy_logo <- image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
+  image_resize("300x300")
+
+library(cowplot)
+final <- ggdraw() +
+  draw_plot(stair_sal/facet_sal) +
+  draw_image(img_nurse, x = 0.1, y = 0.45,width = 0.08) +
+  draw_image(img_dataworld, x = 0.13, y = -0.46,width = 0.05) +
+  draw_image(img_bls, x = 0.18, y = -0.46,width = 0.05) +
+  draw_image(tidy_logo, x = 0.04, y = -0.46,width = 0.09) 
 
 
 # save final plot
 ragg::agg_png(here::here("/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w41/w41_nurses.png"),
               res = 320, width = 12, height = 14, units = "in")
-stair_sal/facet_sal
+#stair_sal/facet_sal
+final
 dev.off()
 
 
-
-#----Tidytuesday logo----
-# read the image, attach the Tidytuesday logo and save it
-library(magick)
-tidy_logo <- image_read("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/static/plot_logo.png") %>%
-  image_resize("300x300")
-
-tidy_final <- image_read("/Users/federica/Documents/R/R_general_resourses/TidyTuesday/TidyTuesday/w41/w41_nurses.png")
-attached_logo <- image_composite(tidy_final, tidy_logo,
-                                 operator = "atop",
-                                 gravity = "southwest")
-
-image_write(attached_logo, path = "w41_nurses.png", format = "png")
 
 
