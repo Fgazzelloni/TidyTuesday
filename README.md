@@ -49,3 +49,4 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 39 | `2021-09-21` | [Emmy Awards](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-21/readme.md) | ![png](/w39/w39_nominees.png)
 | 40 | `2021-09-28` | [NBER Papers](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-09-28/readme.md) | ![png](/w40/w40_ep.png)
 | 41 | `2021-10-05` | [Registered Nurses](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-05/readme.md) | ![png](/w41/w41_nurses.png)
+| 42 | `2021-10-12` | [Global Seafood](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-12/readme.md) | ![png](/w42/w42_seafood.png)
