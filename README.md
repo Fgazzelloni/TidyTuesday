@@ -151,7 +151,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 
 ## Day 44 
 2021-10-26 | [Ultra Trail Running](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-26/readme.md) 
-![png](w44/w44_runners.png)
+![png](w44/w44_flagrunners.png)
 
 ## Day 45 
 2021-11-02 | [Making maps with R](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-11-02/readme.md) 
