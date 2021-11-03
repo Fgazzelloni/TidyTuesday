@@ -18,8 +18,7 @@ data_for_plastic<-tt_load("2021-01-26")
 ## My First TidyTuesday
 UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 
-| Week | Date | Data source | my TidyTuesday 
-| :---: | :---: | :---: | :---:
+
 | 13 | `2021-03-23` | [UN Votes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-23/readme.md) |  ![png](/w13/UN_votes_W13.png) 
 | 14 | `2021-03-30` | [Makeup Shades](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-30/readme.md) | ![png](/w14/The_Pudding_plot_w14.png) 
 | 15 | `2021-04-06` | [Global deforestation](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-04-06/readme.md) | ![png](/w15/tidytuesday_slope.png) 
