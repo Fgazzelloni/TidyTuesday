@@ -13,7 +13,11 @@ tuesdata <- tidytuesdayR::tt_load("2018-05-07")
 
 data_for_plastic<-tt_load("2021-01-26")
 
-# my contributions [Twitter: @fgazzelloni](https://twitter.com/fgazzelloni)
+# my contributions [Twitter: @fgazzelloni](https://twitter.com/fgazzelloni):
+
+- [30DayChartChallenge-2021](https://github.com/Fgazzelloni/rstats-chart-challenge-2021)
+- [30DayMapChallenge-2021](https://github.com/Fgazzelloni/30DayMapChallenge)
+
 
 ## My First TidyTuesday
 UN Votes week 13 - Harvard Dataverse	Citizen Statistician
