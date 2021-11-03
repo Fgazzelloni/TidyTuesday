@@ -51,3 +51,5 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 | 41 | `2021-10-05` | [Registered Nurses](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-05/readme.md) | ![png](/w41/w41_nurses.png)
 | 42 | `2021-10-12` | [Global Seafood](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-12/readme.md) | ![png](/w42/w42_seafood.png)
 | 43 | `2021-10-19` | [Big Pumpkins](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-19/readme.md) | ![png](w43/pumpkins.png)
+| 44 | `2021-10-26` | [Ultra Trail Running](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-10-26/readme.md) | ![png](w44/w44_runners.png)
+| 45 | `2021-11-02` | [Making maps with R](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-11-02/readme.md) | ![png](w45/w45_maps.png)
