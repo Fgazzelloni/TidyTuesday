@@ -157,6 +157,9 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 2021-11-02 | [Making maps with R](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-11-02/readme.md) 
 ![png](w45/green.png)
 
+## 46
+2021-11-09 | [Learning with `afrilearndata`](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-11-09/readme.md) 
+![png](w46/raster2.png)
 
 
 
