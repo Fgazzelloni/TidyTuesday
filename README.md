@@ -166,7 +166,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 
 ## 48
 2021-11-23 | [Dr. Who](dhttps://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-11-23/readme.md)
-![png](w48/dr_who.png)
+![png](w48/dr_who2.png)
 
 ## 49
 2021-11-30 | [World Cup Cricket](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-11-30/readme.md)
