@@ -86,6 +86,7 @@ my_df%>%
 
 ######################################
 library(prophet)
+df<-my_df%>%select(ds=first_aired,y=uk_viewers)
 m <-prophet(df)
 future <- prophet::make_future_dataframe(m, periods=365)
 forecast <- predict(m,future)
@@ -161,7 +162,7 @@ final <- ggdraw()+
   draw_image("/Users/federica/Documents/R/R_general_resources/TidyTuesday/TidyTuesday/w48/tardis.jpg",
              x=-0.42,y=0.42,scale=0.12)
 
-ragg::agg_png(here::here("/Users/federica/Documents/R/R_general_resources/TidyTuesday/TidyTuesday/w48/dr_who.png"),
+ragg::agg_png(here::here("/Users/federica/Documents/R/R_general_resources/TidyTuesday/TidyTuesday/w48/dr_who2.png"),
               res = 320, width = 12, height = 8, units = "in")
 final
 dev.off()
