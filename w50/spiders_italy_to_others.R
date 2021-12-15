@@ -81,11 +81,11 @@ it_to_from<-my_spider_countries%>%
   mutate(region=gsub("\\)$","",region))%>%
   rename(from=country2,to=region)
 
-#it_to_from%>%View
+#it_to_from%>%count(to)
 
-library(ggraph)
-library(igraph)
-library(tidyverse)
+# library(ggraph)
+# library(igraph)
+# library(tidyverse)
 
 spiders_Balkans <-  c("Bulgaria","Albania","Greece","Bosnia","Kosovo","Macedonia",
                       "Montenegro","Romania","Serbia")%>%as_tibble()%>%
@@ -106,7 +106,10 @@ italy<- world%>%
 library(sf)
 # centroids and coords with spData::world-----
 world2_geo<- spData::world
+# library(countrycode)
+# countrycode::codelist
 
+# italy centroids
 it_centroids<- world2_geo%>%
   filter(name_long=="Italy")%>%
   st_centroid()%>%
@@ -115,10 +118,14 @@ it_centroids<- world2_geo%>%
   mutate(from="Italy")%>%
   rename(long_from=X,lat_from=Y)
 
-
+# extrapolate the centroids for italy_to countries
 to_country_geom<- world2_geo%>%
-  filter(name_long%in%italy_to) %>% #18 out of 24
-  st_centroid()%>%select(name_long)
+  filter(name_long%in%italy_to) %>% #22 out of  28
+  st_centroid()%>%select(name_long)# %>%count(name_long) 
+
+# check missing values
+as.data.frame(italy_to)%>% # count(italy_to) # 28
+  anti_join(to_country_geom,by=c("italy_to"="name_long")) # missing values ("Malta","North Macedonia","Russia","Sardinia","Sicily","Bosnia")
 
 
 to_centroids<- to_country_geom%>%
@@ -126,15 +133,21 @@ to_centroids<- to_country_geom%>%
   as.data.frame()%>%
   rename(long_to=X,lat_to=Y)
 
+
+
 to_df<-cbind(to=to_country_geom$name_long,to_centroids)%>%
-  filter(!to=="Kosovo")
+  filter(!to%in%c("Kosovo","France"))    
+# 46.261157084423814, 2.3345436786735583
+
+
+
 
 to_and_from<- it_to_from%>%
   count(family,genus,species,subspecies,year,from,to)%>%
   select(-n)%>%
   filter(to%in%to_df$to) %>%
   left_join(it_centroids,by="from") %>%#count(to)
-  left_join(to_df,by="to")
+  left_join(to_df,by="to")#%>%count(to,long_to,lat_to)
 
 
 balkans_to<- to_df%>%
@@ -154,6 +167,7 @@ showtext_auto()
 showtext_opts(dpi = 320)
 
 # map--------
+
 italy_map<-ggplot(world)+
   # rest of the countries ploygons
   geom_polygon(aes(x=long,y=lat,group=group),
@@ -170,7 +184,7 @@ italy_map<-ggplot(world)+
   # to points
   geom_point(data= to_df,
              aes(x=long_to,y=lat_to),
-             color="brown",size=4,alpha=0.9,shape=21,stroke=2)+
+             color="#D16296",size=4,alpha=0.9,shape=21,stroke=2)+
   # points connections
   geom_curve(data= to_and_from,
                aes(x = long_from, y = lat_from, 
@@ -190,7 +204,7 @@ italy_map<-ggplot(world)+
   # stroke of centre point of italy
   geom_point(data= it_centroids,
              aes(x=long_from,y=lat_from),
-             color="brown",size=3,shape=21,stroke=2,alpha=0.9) +
+             color="#D16296",size=3,shape=21,stroke=2,alpha=0.9) +
   # center point of italy
   geom_point(data= it_centroids,
              aes(x=long_from,y=lat_from),
@@ -200,49 +214,21 @@ italy_map<-ggplot(world)+
                  label="Italy"),
             family="Blackwidow",nudge_y = 1,
              color="black",size=10) +
-  
+  geom_curve(aes(x = 12.1, y = 42.8, 
+            xend = 2.3345436786735583, yend = 46.261157084423814),
+             curvature = 0.2,size=0.3,
+             color="dodgerblue4",
+             alpha=0.4,
+             arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_text(aes(x = 2.3345436786735583, y = 46.261157084423814,
+                label="France"),
+            family="Blackwidow",nudge_y = 1,
+            color="black",size=8)+
   coord_cartesian(xlim=c(-8.42048,54.28545),ylim=c(28.18548,49.14882))+
   labs(caption="Datasource: World Spiders Database | Majer et al, 2015 | #TidyTuesday week50\nDataViz: Federica Gazzelloni")+
   ggthemes::theme_map()+
   theme(text = element_text(family="Roboto Condensed"),
         plot.caption = element_text(size=11))
-
-italy_map
-
-
-# taxonomy (species and suspecies in Italy)--------
-spiders_italy <-  filter(my_spider_countries, grepl("Italy", country2))
-spiders_italy<- spiders_italy%>%filter(!is.na(subspecies))
-
-spiders_italy$pathString <- paste("Spiders", 
-                                  spiders_italy$family,
-                                  spiders_italy$genus,
-                                  spiders_italy$species, 
-                                  spiders_italy$subspecies,
-                                  sep = "|")
-#convert to Node
-spiders_italy <- as.Node(spiders_italy, pathDelimiter = "|")
-useRtreeList <- ToListExplicit(spiders_italy, unname = TRUE)
-
-radialNetwork(useRtreeList,
-              fontSize = 8,
-              fontFamily = "Roboto Condensed", 
-              linkColour = "#8898b3", 
-              nodeColour = "brown",
-              nodeStroke = "#acb507", 
-              textColour = "black", 
-              #opacity = -1/20,
-              margin = list(2,2,2,2))
-
-diagonalNetwork(useRtreeList,
-              fontSize = 15,
-              fontFamily = "Roboto Condensed", 
-              linkColour = "#8898b3", 
-              nodeColour = "brown",
-              nodeStroke = "#acb507", 
-              textColour = "brown", 
-              #opacity = -1/20,
-              margin = list(2,2,2,2))
 
 # export the radial plot and save it as .png
 
@@ -252,10 +238,6 @@ library(gt)
 library(tidyverse)
 library(glue)
 
-# Define the start and end dates for the data range
-start_date <- spiders%>%filter(year==min(year))%>%count(year)%>%select(-n)%>%unlist()
-end_date <- spiders%>%filter(year==max(year))%>%count(year)%>%select(-n)%>%unlist()
-
 spiders_italy <-  filter(my_spider_countries, grepl("Italy", country2))
 spiders_italy<- spiders_italy%>%filter(!is.na(subspecies))
 
@@ -264,21 +246,14 @@ tax_tb<-spiders_italy %>%
   select(Year=year,Family=family,Genus=genus,Species=species,Subspecies=subspecies) %>%
   gt() %>%
   tab_header(
-    title = md("**Spiders Taxonomy**"),
-    subtitle = glue("{start_date} to {end_date}")
+    title = md("**Italy-Spiders Taxonomy**"),
+    subtitle = glue("1907 to 1973")
   ) %>%
   tab_source_note(
     source_note = md("Datasource: **World Spiders Database** | Majer et al, 2015")
   )  %>%
-  tab_options(table.background.color="darkcyan")%>%
+  tab_options(table.background.color="#D16296")%>%
   bstfun::as_ggplot()
-
-
-my_spider_countries%>%
-  filter(country2=="Italy")%>%
-  filter(!is.na(subspecies))%>%
-  ggplot()
-  
 
 
 # final touches----------
@@ -287,7 +262,7 @@ final_plot<- ggdraw(italy_map)+
   draw_label("Spiders from Italy to?",x=0.55,y=0.1,
              fontfamily = "Blackwidow",size=65)+
  draw_line(x=c(0.715,0.985),y=c(0.52,0.52),size=45,
-           color="darkcyan")+
+           color="#D16296")+
   
  draw_label("The history of Italian spiders formally begins in 1868,\na list of 404 species were reported at the time.\nThere were unbalanced discoveries between \nnorthen and southern Italy.\nKnowledge on Italian spiders increased rapidly, \nbetween 1901-1951\nSpiders are mostly found in Alto-Adige, Valle D'Aosta,\nLombardia,Veneto,Calabria and Sardegna.",
              x=0.85,y=0.52,size=10,color="white",
@@ -299,7 +274,7 @@ final_plot<- ggdraw(italy_map)+
              scale=0.1,x=-0.44,y=0.45) 
 
 ####### SAVING ######################################
-ragg::agg_png(here::here("w50/spiders.png"),
+ragg::agg_png(here::here("w50/spiders2.png"),
               res = 320, width = 12, height = 8, units = "in")
 final_plot
 
