@@ -174,7 +174,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 
 ## 50
 2021-12-07 | [Spiders](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-12-07/readme.md)
-![png](w50/spiders.png)
+![png](w50/spiders2.png)
 
 
 
