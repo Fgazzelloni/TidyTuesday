@@ -71,7 +71,7 @@ library(RColorBrewer)
   theme(text = element_text(family=family1,color="#F5F5F5"),
         axis.title = element_blank(),
         axis.text.y = element_text(vjust=0,hjust=0.95,size=16),
-        axis.text.x = element_text(size=11,vjust=0.5),
+        axis.text.x = element_text(size=11),
         plot.background = element_blank(),
         panel.background = element_blank())
   
