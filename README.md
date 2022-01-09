@@ -25,8 +25,8 @@ Several TidyTuesday interesting examples can be found in the main repository:
 ## [2021](data/2021) | [2022](data/2022)
 
 | Week | Date | Data | my contribution 
-| :---: | :---: | :--- | :--- | :---|
-| 1 | `2021-01-04` | Bring your own data to start 2022! | 
+| :---: | :---: | :--- | :--- 
+| 1 | `2021-01-04` | Bring your own data to start 2022! | ![png](w1_your_own_data/your_own_data.png)
 
 
 
