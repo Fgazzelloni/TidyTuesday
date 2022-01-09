@@ -10,23 +10,24 @@ Several TidyTuesday interesting examples can be found in the main repository:
 #### How to make a #TidyTuesday (more info at the bottom of this page) 
 
 ***
-
-# My contributions DataSets
-## [2021](data/2021) | [2022](data/2022)
-
-| Week | Date | Data | Source | Article
-| :---: | :---: | :--- | :--- | :---|
-| 1 | `2021-01-04` | Bring your own data to start 2022! | | |
-
-***
-## My contributions are posted on: 
+### My contributions are posted on: 
 
 #### Twitter @[fgazzelloni](https://twitter.com/fgazzelloni) and collected in this repository with related code.
 
-## Other #DataViz projects contributions:
+***
+#### Other #DataViz projects I contributed to:
 
-### - [30DayChartChallenge-2021](https://github.com/Fgazzelloni/rstats-chart-challenge-2021)
-### - [30DayMapChallenge-2021](https://github.com/Fgazzelloni/30DayMapChallenge)
+##### - [30DayChartChallenge-2021](https://github.com/Fgazzelloni/rstats-chart-challenge-2021)
+##### - [30DayMapChallenge-2021](https://github.com/Fgazzelloni/30DayMapChallenge)
+
+***
+# My #TidyTuesdays
+## [2021](data/2021) | [2022](data/2022)
+
+| Week | Date | Data | my contribution | 
+| :---: | :---: | :--- | :--- | :---|
+| 1 | `2021-01-04` | Bring your own data to start 2022! | | 
+
 
 
 ***
