@@ -1,0 +1,222 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+
+```{r data}
+colony <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-11/colony.csv')
+stressor <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-11/stressor.csv')
+
+```
+
+```{r my_df}
+df <- colony %>%
+  full_join(stressor,by=c("year","months","state"))
+
+df<-df%>%filter(!is.na(colony_n))
+```
+
+
+```{r geodata}
+map <- ggplot2::map_data("state")
+map
+
+library(maps)
+data(state.fips)
+abb<-state.fips%>%select(polyname,abb)
+
+map <-map%>%left_join(abb,by=c("region"="polyname"))%>%
+  mutate(abb=case_when(region=="massachusetts"~"MA",
+                       region=="michigan"~"MI",
+                       region=="new york"~"NY",
+                       region=="north carolina"~"NC",
+                       region=="virginia"~"VA",
+                       region=="washington"~"WA",
+                       TRUE ~ abb))
+```
+
+
+```{r fonts}
+library(extrafont)
+library(showtext)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+library(sysfonts)
+font_families_google()
+font_add_google(name="Baskervville",family="bees1")
+
+
+#font_add_google(name ="Black Han Sans" ,family = "my_font")
+#font_add_google(name ="Odibee Sans" ,family = "my_font1")
+
+family = "bees1"
+
+```
+
+
+```{r tidy_df_geo}
+tidy_df <- df%>% 
+  count(state,year,colony_lost_pct,stressor,stress_pct)%>%
+  filter(year==c(2015,2020))%>%
+  mutate(state=tolower(state))%>%
+  filter(!state%in%c("hawaii","other states","united states"))%>%
+  filter(!is.na(stress_pct))%>%
+  select(-n) %>% # 
+  pivot_wider(names_from = year,values_from=stress_pct,
+              values_fill = 0.00001, values_fn={mean}) %>%
+  mutate(stress_pct_diff=round(((`2020`/`2015`) *100)-100))
+  
+tidy_df_geo <- tidy_df%>% left_join(map,by=c("state"="region"))
+```  
+  
+```{r bees_map}
+bees_map_df <- tidy_df_geo%>%
+  group_by(state)%>%
+  mutate(lat2=median(range(lat)),
+         long2=median(range(long)))%>% # this is to positioning the numbers 
+  ungroup()%>%
+  count(state,abb,long2,lat2,group,stress_pct_diff)%>%
+  group_by(state) %>%
+  mutate(m_stress_pct_diff=round(mean(stress_pct_diff)/10000000,2))%>%
+  ungroup()
+ 
+bees_map <-ggplot()+
+  geom_polygon(data=tidy_df_geo,
+               mapping=aes(x=long, y=lat, group = group),
+               alpha=0.2,fill="gold",show.legend = F)+
+    
+  stat_summary_hex(data=tidy_df_geo,aes(x=long,y=lat,z=group),
+                   fill="orange",color="gold") +
+  geom_point(data=bees_map_df,mapping = aes(x=long2, y=lat2, group = group,
+                           size=m_stress_pct_diff),
+             shape=21,stroke=0.1,color="#299E50") +
+  geom_text(data=bees_map_df,
+            mapping = aes(x=long2, y=lat2, group = group,
+                           label=abb),size=3,color="grey25") +
+  scale_size_identity(guide="legend")+
+  guides(size = guide_legend(override.aes = list(color = "grey25",stroke=1)))+
+  labs(title="US Bees colony lost and stressor",
+       subtitle="(%) difference 2015 - 2020",
+       size="AVG Stressor (%)") +
+  ggthemes::theme_map()+
+  theme(text = element_text(family=family,face="bold"),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.position = c(0.1,-0.15),
+        legend.key = element_rect(fill="orange",color="gold",size=2),
+        legend.text = element_blank(),
+        plot.background = element_blank(),
+        plot.title = element_text(size=25,face="bold"),
+        plot.subtitle =  element_text(size=15),
+        panel.background = element_blank())
+
+# bees_map
+```
+  
+  
+  
+```{r bees_fly_plot}
+library(ggimage)
+
+bees_fly <-df%>%
+  filter(year%in%c(2015,2020))%>%
+  select(state,stressor,stress_pct,colony_lost,year) %>% 
+  mutate(stress_pct=ifelse(is.na(stress_pct),0,stress_pct)) %>% 
+  #group_by(state)%>%summarize(mean=mean(stress_pct))
+  pivot_wider(names_from = year,values_from=colony_lost,
+              values_fn={mean},values_fill=0) %>%
+  mutate(diff_colony_lost=round(`2020`-`2015`)) %>%
+  #select(-`2015`,-`2020`)%>%
+  mutate(stressor=case_when(stressor=="Other pests/parasites"~"Other",
+                            stressor=="Unknown"~"Other",
+                            TRUE~stressor)) %>%
+  group_by(stressor) %>%
+  mutate(m_colony_lost=mean(diff_colony_lost))%>%
+  ungroup()%>%
+  #mutate(img = "<img src='w2_bees/bees.png' width='12'/>") %>%
+  mutate(img = "bees.png",
+         img=as.factor(img)) %>%as.data.frame()
+
+
+pct_decr_lost<- bees_fly %>%
+  count(stressor,m_colony_lost=round(m_colony_lost))%>%
+  mutate(tot_loss=round(m_colony_lost*n),
+         pct=paste0(round(tot_loss/sum(tot_loss)*100),"%"))
+
+
+range(bees_fly$m_colony_lost)
+
+
+bees_fly_plot<-bees_fly%>%
+  left_join(select(pct_decr_lost,stressor,pct),by="stressor")%>%
+  ggplot(aes(x=fct_reorder(stressor,m_colony_lost),y=m_colony_lost))+
+  geom_line(orientation = "x",aes(group=1))+
+  ggimage::geom_image(aes(image=img), size=.1) +
+  geom_vline(aes(xintercept=fct_reorder(stressor,-m_colony_lost)),alpha=0.2,color="gold")+
+  geom_text(aes(label=stressor),vjust=-2.5,hjust=0.65)+
+  geom_text(aes(label=pct),vjust=2.5)+
+  expand_limits(x=0,y=c(-1300 , -900))+
+  scale_y_reverse()+ #limits=rev)+
+  scale_x_discrete(limits=rev)+ #limits=rev)+
+  labs(caption="Datasource: USDA | DataViz: Federica Gazzelloni")+
+  theme_void()+
+  theme(text = element_text(family=family,face="bold"),
+        plot.caption=element_text(size=11,face="bold"))
+
+
+# bees_fly_plot
+```
+
+
+```{r cowplot}
+library(cowplot)
+
+final <- ggdraw()+
+  draw_plot(bees_fly_plot,scale = 0.6,x=0.19,y=-0.13)+
+  draw_plot(bees_map,scale = 0.8,x=-0.1,y=0.1)+
+  draw_image("https://d3l4q0oih2c6yv.cloudfront.net/assets/esmis/cornell_seal_simple_b31b1b-54caf4668562db6b35fe259a44a4f9dc5db28a966230652ae2b175edcb9d56f0.svg",
+             scale=0.1,x=0.45,y=0.43)+
+  draw_image("usda_logo.png",
+             scale = 0.1, x=0.35,y=0.43)+
+  draw_image("bee_informed.png",scale = 0.09,x=-0.37,y=-0.315)+
+  draw_image("bee_informed.png",scale = 0.055,x=-0.37,y=-0.12)+
+  draw_label("The Stressors are the causes for bees colony loss\n the (%) difference 2015-2020 shows some states are more affected then othes by\n stressors.",
+             x=0.38,y=0.07,fontfamily = family,size=11)+
+  draw_label("Low",x=0.2,y=0.3,fontfamily = family)+
+  draw_label("High",x=0.2,y=0.2,fontfamily = family)+
+  draw_label("Includes unknwon and parasites",x=0.77,y=0.5,
+             fontfamily = family,size=11)+
+  draw_line(x=c(0.78,0.8),y=c(0.44,0.49),color="orange")+
+  draw_label("Percentange of the stressor affecting the colonies",x=0.8,y=0.2,fontfamily = family,size=10)+
+  draw_line(x=c(0.8,0.78),y=c(0.21,0.31),color="orange")+
+  draw_label("The least contributing to bees loss",x=0.85,y=0.66,
+             size=11,fontfamily = family)+
+  draw_line(x=c(0.89,0.9),y=c(0.56,0.65),color="orange")+
+  draw_label("Leading parasite affecting \nbees colony\n named Varroa destructor",x=0.38,y=0.2,size=11,fontfamily = family)+
+  draw_line(x=c(0.42,0.5),y=c(0.18,0.2),color="orange")+
+  draw_image("bee_flying.png",scale = 0.55,x=0.2,y=0.3)
+    
+    
+#final
+```
+
+
+```{r}
+ggsave(
+  paste0("bees_", format(Sys.time(), "%d%m%Y"), ".png"),
+   plot =final,
+  bg="white",
+  dpi = 320,
+  width = 11,
+  height = 6
+)
+```
