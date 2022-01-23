@@ -1,0 +1,236 @@
+---
+title: "w3_chocolate"
+output: html_document
+---
+
+Here is a short tutorial for making a **flow map**: https://github.com/rafapereirabr/flow-map-in-r-ggplot
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+```{r data, message=FALSE, warning=FALSE, paged.print=FALSE}
+chocolate <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv')
+#DataExplorer::profile_missing(chocolate)
+```
+```{r}
+
+library(maps)
+library(geosphere)
+#library(rworldmap)
+library(ggthemes)
+```
+
+
+```{r world_map}
+# Get World map
+worldMap <- rworldmap::getMap()
+mapworld_df <- ggplot2::fortify( worldMap )
+```
+
+Mismatching values in **company_location**
+```{r Mismatching1,eval=FALSE, include=FALSE}
+#library(plyr)
+a<-plyr::count(mapworld_df$id)
+b<-plyr::count(chocolate$company_location)
+aa<-a%>%filter(x%in%b$x)
+
+b%>%anti_join(aa,by="x") # 11 locations do not match
+
+#a%>%filter(str_detect(x,"Tobago"))
+```
+
+**Martinique** would not be added in this flow map
+```{r chocolate1_part_one}
+chocolate1<-chocolate%>%
+  select(company_location,country_of_bean_origin,cocoa_percent,rating)%>%
+  mutate(company_location=case_when(company_location=="Amsterdam"~"Netherlands",
+                                    company_location=="Sao Tome"~"Sao Tome and Principe",
+                                    company_location=="Sao Tome & Principe"~"Sao Tome and Principe",
+                                    company_location=="Scotland"~"United Kingdom",
+                                    company_location=="St. Lucia"~"Saint Lucia",
+                                    company_location=="St.Vincent-Grenadines"~"Saint Vincent and the Grenadines",
+                                    company_location=="U.A.E."~"United Arab Emirates",
+                                    company_location=="U.K."~"United Kingdom",
+                                    company_location=="U.S.A."~"United States of America",
+                                    company_location=="Wales"~"United Kingdom",
+                                    TRUE~company_location)
+                                    )
+```
+
+
+Mismatching values in **country_of_bean_origin** - missing **martinique**
+```{r Mismatching2,eval=FALSE, include=FALSE}
+a<-plyr::count(mapworld_df$id)
+b2<-plyr::count(chocolate$country_of_bean_origin)
+aa2<-a%>%filter(x%in%b2$x)
+
+b2%>%anti_join(aa2,by="x") # 16 locations do not match
+```
+
+
+**Martinique** and ** ** would not be added in this flow map
+```{r chocolate1_part_two}
+chocolate1<- chocolate1 %>%
+  mutate(country_of_bean_origin=case_when(country_of_bean_origin=="Blend"~"Indonesia",
+                                          country_of_bean_origin=="Burma"~"Myanmar",
+                                          country_of_bean_origin=="Congo"~"Republic of the Congo",
+                                          country_of_bean_origin=="DR Congo"~"Republic of the Congo",
+                                          country_of_bean_origin=="Principe"~"Sao Tome and Principe",
+                                          country_of_bean_origin=="Sao Tome"~"Sao Tome and Principe",
+                                          country_of_bean_origin=="Sao Tome & Principe"~"Sao Tome and Principe",
+                                          country_of_bean_origin=="St. Lucia"~"Saint Lucia",
+                                          country_of_bean_origin=="St.Vincent-Grenadines"~"Saint Vincent and the Grenadines",
+                                          country_of_bean_origin=="Sulawesi"~"Indonesia",
+                                          country_of_bean_origin=="Sumatra"~"Indonesia",
+                                          country_of_bean_origin=="Tanzania"~"United Republic of Tanzania",
+                                          country_of_bean_origin=="Tobago"~"Trinidad and Tobago",
+                                          country_of_bean_origin=="Trinidad"~"Trinidad and Tobago",
+                                          country_of_bean_origin=="U.S.A."~"United States of America",
+                                          TRUE~country_of_bean_origin)
+  )
+```
+
+
+
+```{r chocolate2}
+chocolate2<-chocolate1%>%count(company_location,country_of_bean_origin)
+```
+
+
+```{r centroids_map}
+centroids_map<- mapworld_df%>%
+  group_by(id)%>%
+  mutate(long=mean(range(long)),lat=mean(range(lat)))%>%
+  ungroup()%>%
+  count(id,long,lat)
+
+DataExplorer::profile_missing(centroids_map)
+```
+
+
+```{r chocolate3_geo}
+chocolate3<-chocolate2%>%
+  filter(!company_location=="Martinique",
+         !country_of_bean_origin=="Martinique",
+         !country_of_bean_origin=="Samoa")%>%
+  left_join(centroids_map,by=c("company_location"="id"))%>%
+  rename(long_loc=long,lat_loc=lat)%>%
+  left_join(centroids_map,by=c("country_of_bean_origin"="id"))%>%
+  rename(long_orig=long,lat_orig=lat)
+```
+
+
+```{r text}
+text<-chocolate3%>%
+  pivot_longer(cols = c(company_location,country_of_bean_origin),names_to="names",values_to="country")%>%
+  count(country)%>%
+  left_join(centroids_map,by=c("country"="id"))
+```
+
+
+Chocolate palette: https://www.color-name.com/bitter-chocolate.color#color-palettes
+
+```{r fonts}
+library(extrafont)
+library(showtext)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+library(sysfonts)
+#font_families_google()
+font_add_google(name="Felipa",family="choco")
+
+family = "choco"
+```
+
+
+```{r circle_legend}
+circle_legend<-ggplot() +
+  ggforce::geom_circle(aes(x0 = -0.5, y0 = 0, r = 0.05),
+                       color="#dfc27d",fill="#dfc27d") +
+  ggforce::geom_circle(aes(x0 = 0, y0 = 0, r = 0.05),
+                       color="#dfc27d",fill="#dfc27d") +
+  ggforce::geom_circle(aes(x0 = 0, y0 = 0, r = 0.015),
+                       color="blue",fill="blue") +
+  ggforce::geom_circle(aes(x0 = 0.5, y0 = 0, r = 0.025),
+                       color="blue",fill="blue") +
+  coord_fixed(xlim=c(-0.5,1),ylim = c(-0.5,1))+
+  theme_void()+
+  theme(plot.background = element_blank(),
+        panel.background = element_blank())
+```
+
+
+
+```{r map_plot, message=FALSE, warning=FALSE, paged.print=FALSE}
+map_plot<-ggplot() + 
+    geom_polygon(data= mapworld_df%>%
+                   filter(!id=="Antarctica"), 
+                 aes(long,lat, group=group), fill="#2B1A15",color= "#BFBAB9",size=0.2) +
+    geom_point(data = chocolate3, 
+                 aes(x = long_orig, y = lat_orig),
+                 color="#dfc27d",size=3,alpha=0.3) +
+   geom_point(data = chocolate3, 
+                 aes(x = long_loc, y = lat_loc),
+                 color="blue",size=0.5) +
+  geom_segment(data = chocolate3, 
+               aes(x = long_orig, y = lat_orig, 
+                   xend = long_loc, yend = lat_loc, alpha=n.y,color=n.y),
+               size=0.05)+ # ,arrow = arrow(length = unit(0.01, "npc"))
+   geom_text(data=text,family=family,
+            aes(x=long,y=lat,label=country),color="#F07518", #d2691e
+            vjust="top",hjust="right",size=3,check_overlap = T)+
+  
+  scale_colour_distiller(palette="BrBG", name="Frequency", guide = "colorbar") +
+  scale_alpha(range=c(0.8,1))+
+  guides(alpha="none")+
+  labs(title="Cocoa's Countries of Origins and Production map",
+       caption="DataSource: Flavors of Cacao | DataViz: Federica Gazzelloni")+
+  ggthemes::theme_map()+
+  theme(text = element_text(color="#d2691e",family=family),
+        plot.background = element_rect(color="#54504d",fill="#54504d"),# BFBAB9 #282625
+        panel.background = element_rect(color="#54504d",fill="#54504d"),
+        legend.background = element_blank(),
+        plot.title = element_text(hjust = 0.5,size=28),
+        plot.caption = element_text(size=10))
+
+library(cowplot)
+
+
+final<-ggdraw()+
+  draw_plot(map_plot)+
+  draw_plot(circle_legend,scale=0.5,x=0.1,y=-0.3)+
+  draw_image(here::here("R_general_resources/TidyTuesday/data/2022/w3_chocolate/image1.png"),
+             x=-0.3,y=-0.41,scale=0.23,clip = "inherit")+
+  draw_image(here::here("R_general_resources/TidyTuesday/data/2022/w3_chocolate/image2.png"),
+             x=0.35,y=0.42,scale=0.2,clip = "inherit")+
+  draw_image(here::here("R_general_resources/TidyTuesday/data/2022/w3_chocolate/image2.png"),
+             x=-0.35,y=0,scale=0.2,clip = "inherit")+
+  draw_label("Origin",x=0.48,y=0.08,fontfamily = family,color="#F07518",size=8)+
+  draw_label("Production",x=0.65,y=0.08,fontfamily = family,color="#F07518",size=8)+
+  draw_label("Origin & Production",x=0.56,y=0.08,fontfamily = family,color="#F07518",size=8)+
+  draw_label("data contains values for Martinique and Samoa not mentioned in this map",x=0.56,y=0.05,color="#F07518",size=8,fontfamily = family)
+
+ggsave(
+   "w3_chocolate.png",
+   plot =final,
+  bg="white",
+  dpi = 320,
+  width = 11,
+  height = 6
+)
+```
+
+
+
+
+
+
+
+
+
