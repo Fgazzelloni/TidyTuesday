@@ -1,0 +1,133 @@
+---
+title: "w5_dogs"
+author: Federica Gazzelloni
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+
+Dogs datasets
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+breed_traits <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_traits.csv')
+trait_description <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/trait_description.csv')
+breed_rank_all <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_rank.csv')
+```
+
+```{r}
+breed_traits%>%str
+```
+
+```{r}
+trait_description
+```
+
+```{r}
+breed_rank_all
+```
+
+```{r}
+rank<-breed_rank_all%>%
+  count(Breed,`2020 Rank`,Image)%>%
+  arrange(`2020 Rank`)%>%
+  slice(1:10)%>%
+  relocate(`2020 Rank`)%>%
+  select(-n)
+#%>% #glue('<span style="color:{shades}">■</span>')
+#  mutate(Image=glue::glue('<span style="image: #url("https://www.akc.org/wp-content/uploads/2017/11/Dachshund-Illo-2.jpg"); display:block" /span>'))
+rank
+```
+
+```{r}
+library(gt)
+library(gtExtras)
+```
+
+
+
+```{r table}
+
+gt::gt(rank)%>%
+  gt_theme_538() %>%
+  tab_header(
+    title = html("<strong>2020 Top 10 Breeds</strong>")
+    )%>%
+  gtExtras::gt_img_rows(columns = Image, height = 65)
+  
+```
+
+
+```{r }
+images <-rank%>%filter(Breed%in%dogs)%>%select(Breed,Image)
+# set the bg transparent
+images_transparent <- magick::image_read(images$Image)
+images2<-magick::image_transparent(images_transparent, 'white')
+class(images2)
+
+```
+
+
+
+```{r}
+my_dogs<- rank%>%select(Breed)%>%unlist()
+dogs<-c("Bulldogs","Poodles","Beagles","Rottweilers","Dachshunds")
+
+
+my_df <-breed_traits%>%
+  select(-"Coat Type",-"Coat Length")%>%
+  filter(Breed%in%my_dogs)%>%
+  mutate(id=row_number())%>%
+  relocate(id)%>%
+  pivot_longer(cols=3:16,names_to="factor",values_to="value")%>%
+  inner_join(images,by="Breed")
+``` 
+
+
+```{r}
+library("ggimage")
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(my_df,aes(id,value,group=Breed))+
+  
+  ggforce::geom_ellipse(aes(x0=id,y0=value-0.2,a=0.2,b=0.25,
+                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+  
+  ggforce::geom_ellipse(aes(x0=id+0.2,y0=value+0.2,a=0.1,b=0.12, 
+                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+  ggforce::geom_ellipse(aes(x0=id-0.2,y0=value+0.15,a=0.1,b=0.12,
+                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+  ggforce::geom_ellipse(aes(x0=id+0.01,y0=value+0.25,a=0.1,b=0.1,
+                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+  ggforce::geom_ellipse(aes(x0=id-0.35,y0=value-0.1,a=0.1,b=0.1,
+                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+  
+  geom_point(aes(size=value),show.legend = F,color="orange",alpha=0.1,vjust=0)+
+  
+  geom_segment(x=0.43,xend=0.43,y=0,yend=6, size=3,color="grey65",
+               arrow = arrow(length = unit(c(0, 0, 0.5, 0.5), 'cm')))+
+  
+  geom_text(aes(label=factor),check_overlap = T, vjust=3.5, hjust="right", size=3, color="black")+
+  
+  geom_text(aes(x=id,y=6,label=Breed),color="black",size=6)+
+  
+  ggimage::geom_image(aes(x=id,y=6,image=Image), color="firebrick")+
+  
+  scale_y_continuous(expand = c(0,1))+
+  coord_cartesian()+
+  ggthemes::theme_fivethirtyeight()+
+  theme(panel.grid.major.x = element_line(size=38),
+        panel.grid.major.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_line(size=4))
+```
+
+
