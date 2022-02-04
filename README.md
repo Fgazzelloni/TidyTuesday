@@ -30,7 +30,7 @@ Several TidyTuesday interesting examples can be found in the main repository:
 | 2 | `2022-01-11` | [Bee Colony losses](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-11/readme.md)|![png](data/2022/w2_bees/w2_bees.png)
 | 3 | `2022-01-18` | [Chocolate Bar ratings](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-18/readme.md) |![png](data/2022/w3_chocolate/w3_chocolate.png)
 | 4 | `2022-01-25` | [Board games](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-25/readme.md)|![png](data/2022/w4_board_games/w4_board_games.png)
-
+| 5 | `2022-02-01` | [Dog breeds](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-01/readme.md)|![png](data/2022/w5_dogs/dog_prints_plot.png)
 
 ***
 ## INFO: How to make a #TidyTuesday
