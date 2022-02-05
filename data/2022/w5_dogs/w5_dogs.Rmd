@@ -4,84 +4,42 @@ author: Federica Gazzelloni
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+## TidyTuesday 2022 week 5 - Dog breeds
 
-```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r lib1, message=FALSE, warning=FALSE, paged.print=FALSE}
 library(tidyverse)
 ```
 
 
-Dogs datasets
-```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Dog breeds datasets, load the data
+```{r data, message=FALSE, warning=FALSE, paged.print=FALSE}
 breed_traits <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_traits.csv')
 trait_description <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/trait_description.csv')
 breed_rank_all <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_rank.csv')
 ```
 
-```{r}
-breed_traits%>%str
-```
-
-```{r}
-trait_description
-```
-
-```{r}
-breed_rank_all
-```
-
-```{r}
+Make a rank dataset to see which breed is favourite in 2020
+```{r rank-set}
 rank<-breed_rank_all%>%
   count(Breed,`2020 Rank`,Image)%>%
   arrange(`2020 Rank`)%>%
   slice(1:10)%>%
   relocate(`2020 Rank`)%>%
   select(-n)
-#%>% #glue('<span style="color:{shades}">■</span>')
-#  mutate(Image=glue::glue('<span style="image: #url("https://www.akc.org/wp-content/uploads/2017/11/Dachshund-Illo-2.jpg"); display:block" /span>'))
+
 rank
 ```
 
-```{r}
-library(gt)
-library(gtExtras)
-```
 
-
-
-```{r table}
-
-gt::gt(rank)%>%
-  gt_theme_538() %>%
-  tab_header(
-    title = html("<strong>2020 Top 10 Breeds</strong>")
-    )%>%
-  gtExtras::gt_img_rows(columns = Image, height = 65)
-  
-```
-
-
-```{r }
-images <-rank%>%filter(Breed%in%dogs)%>%select(Breed,Image)
-# set the bg transparent
-images_transparent <- magick::image_read(images$Image)
-images2<-magick::image_transparent(images_transparent, 'white')
-class(images2)
-
-```
-
-
-
-```{r}
-my_dogs<- rank%>%select(Breed)%>%unlist()
+Select favourite breeds, and set the images 
+```{r my_df}
 dogs<-c("Bulldogs","Poodles","Beagles","Rottweilers","Dachshunds")
 
+images <-rank%>%filter(Breed%in%dogs)%>%select(Breed,Image)
 
 my_df <-breed_traits%>%
   select(-"Coat Type",-"Coat Length")%>%
-  filter(Breed%in%my_dogs)%>%
+  filter(Breed%in%dogs)%>%
   mutate(id=row_number())%>%
   relocate(id)%>%
   pivot_longer(cols=3:16,names_to="factor",values_to="value")%>%
@@ -89,45 +47,86 @@ my_df <-breed_traits%>%
 ``` 
 
 
-```{r}
-library("ggimage")
+
+```{r fonts, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(extrafont)
+library(showtext)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+library(sysfonts)
+#font_families_google()
+font_add_google(name="Barlow Condensed",family="dogs")
+
+family = "dogs"
 ```
 
 
-```{r message=FALSE, warning=FALSE, paged.print=FALSE}
-ggplot(my_df,aes(id,value,group=Breed))+
+To make the plot, use:
+
+- ggforce::geom_ellipse to make the paws
+- ggimage::geom_image to add the images
+
+```{r plot, message=FALSE, warning=FALSE, paged.print=FALSE}
+dog_prints_plot <-
   
+  ggplot(my_df,aes(id,value,group=Breed))+
+  
+  # this is the largest part of the paw
   ggforce::geom_ellipse(aes(x0=id,y0=value-0.2,a=0.2,b=0.25,
-                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
-  
-  ggforce::geom_ellipse(aes(x0=id+0.2,y0=value+0.2,a=0.1,b=0.12, 
-                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+                            angle=50,color=Breed),fill="#393d36",size=0.5,alpha=0.7)+
+  # the following four ellipses are small extrems of the paw
+  ggforce::geom_ellipse(aes(x0=id+0.22,y0=value+0.2,a=0.1,b=0.12, 
+                            angle=50,color=Breed),fill="#393d36",size=0.5,alpha=0.7)+
   ggforce::geom_ellipse(aes(x0=id-0.2,y0=value+0.15,a=0.1,b=0.12,
-                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
+                            angle=50,color=Breed),fill="#393d36",size=0.5,alpha=0.7)+
   ggforce::geom_ellipse(aes(x0=id+0.01,y0=value+0.25,a=0.1,b=0.1,
-                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
-  ggforce::geom_ellipse(aes(x0=id-0.35,y0=value-0.1,a=0.1,b=0.1,
-                            angle=50,fill=Breed),color="brown",size=0.5,alpha=0.7)+
-  
-  geom_point(aes(size=value),show.legend = F,color="orange",alpha=0.1,vjust=0)+
-  
+                            angle=50,color=Breed),fill="#393d36",size=0.5,alpha=0.7)+
+  ggforce::geom_ellipse(aes(x0=id-0.32,y0=value-0.15,a=0.1,b=0.1,
+                            angle=50,color=Breed),fill="#393d36",size=0.5,alpha=0.7)+
+  # this is the grey part of the paw  
+  ggforce::geom_ellipse(aes(x0=id,y0=value-0.3,a=0.08,b=0.08,
+                            angle=50),color="grey65",size=0.02,fill="grey65",alpha=0.1) +
+  # The segment is to make the arrow up
   geom_segment(x=0.43,xend=0.43,y=0,yend=6, size=3,color="grey65",
-               arrow = arrow(length = unit(c(0, 0, 0.5, 0.5), 'cm')))+
+               arrow = arrow(length = unit(c(0, 0, 0.4, 0.4), 'cm')))+
   
-  geom_text(aes(label=factor),check_overlap = T, vjust=3.5, hjust="right", size=3, color="black")+
+  # description of the factors
+  geom_text(aes(label=factor),check_overlap = T, vjust=5.5, hjust=0.5, size=2.5, color="midnightblue",family=family)+
   
-  geom_text(aes(x=id,y=6,label=Breed),color="black",size=6)+
+  # The breed's names
+  geom_text(aes(x=id,y=6.5,label=Breed),color="black",size=5.5,family=family,face="bold")+
   
-  ggimage::geom_image(aes(x=id,y=6,image=Image), color="firebrick")+
+  # Images of the breeds
+  ggimage::geom_image(aes(x=id,y=-1.4,image=Image),size=0.2)+
   
+  # expand the canvas to make the paws standing out
   scale_y_continuous(expand = c(0,1))+
+  ylim(-1.5,7)+
   coord_cartesian()+
+  labs(title="Top 5 selected Breeds: Was Goofy a dog?", 
+       caption="Datasource: American Kennel Club | #TidyTuesday 2022-w5 | Viz: Federica Gazzelloni")+
   ggthemes::theme_fivethirtyeight()+
-  theme(panel.grid.major.x = element_line(size=38),
+  theme(text = element_text(family = family,size=14),
+        plot.title = element_text(size=18,hjust=0.1),
+        plot.caption = element_text(face = "bold",vjust=0.5),
+        panel.grid.major.x = element_line(size=38),
         panel.grid.major.y = element_blank(),
         axis.text.y = element_blank(),
         axis.text.x = element_blank(),
-        axis.ticks.x = element_line(size=4))
+        axis.ticks.x = element_line(size=4),
+        plot.background = element_rect(color="white",fill="white"),
+        panel.background = element_rect(color="white",fill="white"),
+        legend.position = "none")
 ```
 
+Add extra images and save it
+```{r final, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(cowplot)
 
+final <- ggdraw()+
+  draw_plot(dog_prints_plot)+
+  draw_image("print.png",x=0.3,y=0.43,scale=0.16)+
+  draw_image("print.png",x=0.4,y=0.43,scale=0.16)
+
+ggsave("dog_prints_plot.png",final)
+```
