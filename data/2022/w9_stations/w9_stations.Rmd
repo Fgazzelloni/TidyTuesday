@@ -1,0 +1,257 @@
+---
+title: "Alternative Fuel Stations - Week 9 #TidyTuesday"
+date: 2022/03/01
+author: Federica Gazzelloni
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Alternative fueling stations data-set is from the Bureau of transportation statistics updated at January 3, 2022. 
+The U.S. Department of Energy collects this data in partnership with Clean Cities coalitions and their stakeholders to help fleets and consumers find alternative fueling stations.[^1]
+
+[^1]: [datasource](https://data-usdot.opendata.arcgis.com/datasets/usdot::alternative-fueling-stations/about)
+
+```{r dataset, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+# library(tidytuesdayR)
+# tuesdata <- tidytuesdayR::tt_load(2022, week = 9)
+# stations <- tuesdata$stations
+stations <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-03-01/stations.csv')
+```
+
+Stations dataset is made of 70 variables and about 60000 observations. 
+
+We are interested in:
+
+- Open date
+- States and cities
+- Geo codes
+- Fuel type code:
+
+   - Biodiesel (BD),
+   - Compressed Natural Gas (CNG),
+   - Electric (ELEC),
+   - Ethanol (ethanol-gasoline blends, E85),
+   - Hydrogen (HY),
+   - Liquefied Natural Gas (LNG),
+   - Propane (Liquefied Petroleum Gas, LPG)
+   
+- Status code:
+
+   - Available (E)
+   - Planned (P)
+   - Temporarily Unavailable (T)
+
+- Access code:
+
+   - Public
+   - Private
+   
+      
+Each point on the map is counted as one station in the station count      
+      
+```{r}
+stations <- stations%>%
+  janitor::clean_names()
+
+stations%>%head
+```
+
+```{r}
+stations%>%select(contains("ev"))
+```
+
+
+```{r}
+stations%>%names%>%sort
+```
+
+```{r}
+stations%>%count(bd_blends,bd_blends_french)
+stations%>%count(e85_blender_pump,e85_blender_pump,e85_other_ethanol_blends)
+stations%>%count(ev_network,ev_on_site_renewable_source)
+stations%>%count(hydrogen_is_retail,hydrogen_pressures,hydrogen_standards,hydrogen_status_link)
+stations%>%count(lng_on_site_renewable_source)
+stations%>%count(cng_on_site_renewable_source)
+
+stations%>%count(facility_type)
+stations%>%count(fuel_type_code)
+stations%>%count(lpg_primary)
+```
+
+
+```{r manipulation}
+df <- stations%>%
+  #filter(between(longitude,-126,-50),latitude>23)%>%
+  mutate(fuel_type=case_when(fuel_type_code=="BD"~"Biodiesel (B20 and above)",
+                             fuel_type_code=="CNG"~"Compressed Natural Gas (CNG)",
+                             fuel_type_code=="E85"~"Ethanol (E85)",
+                             fuel_type_code=="ELEC"~"Electric",
+                             fuel_type_code=="HY"~"Hydrogen",
+                             fuel_type_code=="LNG"~"Liquefied Natural Gas (LNG)",
+                             fuel_type_code=="LPG"~"Propane (LPG)",
+                             TRUE~fuel_type_code))%>%
+  select(open_date,city,state,zip,latitude,longitude,
+         access_code,
+         facility_type,
+         fuel_type_code,
+         fuel_type,
+         cng_on_site_renewable_source,
+         lng_on_site_renewable_source,
+         ev_on_site_renewable_source)
+```
+
+```{r geodata}
+world <- map_data("world")%>%
+  filter(!region=="Antarctica")
+usa <-map_data("state")
+```
+
+```{r fonts, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(showtext)
+library(sysfonts)
+library(extrafont)
+
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+
+font_add_google(name="Noto Sans",family="notosans")
+```
+
+
+```{r plot}
+plot <- ggplot() +
+  geom_polygon(data=world,aes(x=long,y=lat,group=group),
+               fill="grey85",color="#654321",size=0.1) +
+  geom_polygon(data = usa,
+               aes(x = long, y = lat, group = group),
+               fill="grey85",color="#654321",size=0.1,linetype="dashed") +
+  geom_point(data=df,aes(x=longitude,y=latitude,group=state,color=fuel_type_code),
+             show.legend = T,size=0.1,#shape=".",
+             key_glyph = rectangle_key_glyph(fill=color)) + 
+  
+  geom_point(data=subset(df,fuel_type_code=="CNG"),
+             aes(x=longitude,y=latitude,group=state,color=fuel_type_code),
+             show.legend = T,shape=21,stroke=0.1,
+             key_glyph = rectangle_key_glyph(fill=color)) + 
+  guides(colour=guide_legend(title.position="top", nrow = 1,
+                                     title.hjust =0.5))+
+  ggthemes::scale_color_tableau(name = "Fuel type code",
+    breaks=c("ELEC", "E85", "LPG","CNG","BD","LNG","HY"))+
+  coord_map("ortho", orientation = c(41.071548, -102.211644, 0)) +
+  labs(title="",
+       subtile="",
+       x="",y="") +
+  theme_void() +
+  theme(text = element_text(family="notosans"),
+        legend.position =  c(0.54,0.61),
+        legend.box.spacing = unit(0,"pt"),
+        legend.direction = "horizontal",
+        legend.key.size = unit(10,"pt"),
+        legend.justification = "center",
+        plot.margin = margin(0,0,0,0,unit="pt"),
+        panel.background = element_rect(fill="#d8ebff",color="#d8ebff"),
+        plot.background = element_rect(fill="#d8ebff",color="#d8ebff"))
+
+plot
+```
+
+
+```{r table}
+library(gt)
+library(gtExtras)
+table <- df%>%
+  count(fuel_type,fuel_type_code)%>%
+  mutate(pct=round(n/sum(n)*100,2))%>%
+  arrange(-pct)%>%
+  select(-n)%>%
+  gt::gt(
+    caption="Bureau of Transportation Statistics")%>%
+  gt_plt_bar(column = pct, keep_column = T)%>%
+  tab_header(
+    title = "Fuel Alternatives") %>%
+  cols_label(fuel_type_code="",fuel_type = "Fuel Type",pct="% ")%>%
+  gt_theme_guardian()
+
+table
+
+#class(table)
+# table %>%
+#   gtsave(filename = "table.png")
+```
+```{r}
+fuel_font <- df%>%
+  select(contains("fuel"),longitude,latitude,city) %>%
+  group_by(city)%>%
+  summarise(fuel_type_code,avg_lng=mean(range(longitude)),avg_lat=mean(range(latitude)),.groups="drop")%>%
+  ungroup()%>%
+  distinct()
+
+ 
+
+barplot <- df%>%
+  count(fuel_type_code,fuel_type,cng_on_site_renewable_source,lng_on_site_renewable_source,ev_on_site_renewable_source) %>%
+  pivot_longer(cols=c("cng_on_site_renewable_source","lng_on_site_renewable_source","ev_on_site_renewable_source"),
+               names_to="source_name",values_to="source")%>%
+  filter(!fuel_type=="NA",!source=="NONE")%>%
+  select(-source_name)%>%
+  drop_na() %>%
+  
+  ggplot(aes(x=fuel_type,y=source))+
+  geom_col(position="dodge",aes(fill=source),show.legend = F)+
+  geom_text(aes(label=source),position=position_dodge(width = 1),
+            angle=0,hjust=1,vjust=0.5,size=5)+
+  #coord_polar(theta = "x")+
+  coord_flip()+
+  #facet_wrap(vars(fuel_type))+
+  ggthemes::scale_fill_tableau()+
+  theme_void()+
+  theme(text = element_text(family="notosans",size=12),
+        strip.placement = "inside",
+        axis.text.y = element_blank(),
+        plot.background = element_blank(),
+        panel.background = element_blank())
+
+barplot
+```
+
+```{r}
+ggsave("barplot.png")
+```
+
+
+
+```{r cowplot}
+library(cowplot)
+ggdraw()+
+  draw_plot(plot,scale=1.6)+
+  draw_image("barplot.png",scale=0.5,x=-0.3,y=0.1)+
+  draw_image("table.png",scale=0.3,x=-0.32,y=-0.28)+
+  draw_image("NTAD_Logo_32.png",scale=0.3,x=0.32,y=0.28)+
+  draw_image("eia.png",scale = 0.2,x=0.35,y=-0.3)+
+  draw_line(x = c(0.05, 0.65),y = c(0.88, 0.88),color = "gold", size = 4)+
+  draw_label("Electric",x=0.018,y=0.75,size=12,fontfamily = "notosans",fontface = "bold",angle=90)+
+  draw_label("Compr.nat.Gas",x=0.018,y=0.49,size=12,fontfamily = "notosans",fontface = "bold",angle=90)+
+  draw_label("Fuel type by sources | US DOT | EIA",x=0.12,y=0.37,size=8,
+             fontfamily = "notosans",angle=0)+
+  draw_label("US Alternative Fuel Stations",x=0.35,y=0.9,size=30,
+             fontfamily = "notosans",fontface = "bold")+
+  draw_label("Although gasoline remains by far the dominant \ntransportation fuel, a variety of alternative fuels \nare currently in use,primarily by government \nand private fleets.\nThese fuels include electricity, propane,\nhigher ethanol-gasoline blends (E85),\nhydrogen, and natural gas.\nIn aggregate, there are currently about 10,000\n alternative fuel stations in the United States,\ncompared to approximately 160,000\n gasoline stations in the country.(EIA)",size=8,fontfamily = "notosans",
+             x=0.86,y=0.47)+
+  draw_label("DataSource: #TidyTuesday 2022/w9 | Alternative Fuel Stations | US DOT | EIA\nInfographics: Federica Gazzelloni",x=0.35,y=0.05,size=10,fontfamily = "notosans")
+```
+
+
+```{r}
+ggsave("w9_stations.png",width = 10)
+```
+
+
+
+
+
