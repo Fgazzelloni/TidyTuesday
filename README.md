@@ -35,6 +35,8 @@ Several TidyTuesday interesting examples can be found in the main repository:
 | 7 | `2022-02-15` | [`#DuBoisChallenge2022`](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-15/readme.md)|![png](data/2022/w7_dubois/w7_number6.png)
 | 8 | `2022-02-22` | [World Freedom index](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-22/readme.md)|![png](data/2022/w8_wfi/freedom.png)
 | 9 | `2022-03-01` | [Alternative Fuel Stations](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-01/readme.md)|![png](data/2022/w9_stations/w9_stations.png)
+| 10 | `2022-03-08` | [Erasmus student mobility](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-08/readme.md) |![png](data/2022/w10_erasmus/er-network.png)
+| 11 | `2022-03-15` | [CRAN/BIOC Vignettes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-15/readme.md)|![png](data/2022/w11_cran/w11_cran.png)
 
 ***
 ## INFO: How to make a #TidyTuesday
