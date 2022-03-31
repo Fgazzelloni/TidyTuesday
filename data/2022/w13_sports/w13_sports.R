@@ -35,7 +35,7 @@ ggplot(data = df,
   theme_ipsum() +
   theme(text=element_text(family="notosans"),
         legend.position="bottom") +
-  labs(title="How profitable can college sport be? - USA Facts",
+  labs(title="How profitable can college sports be? - USA Facts",
        subtitle = "data from 2015 to 2019 - in thousands of $",
        caption="DataSource: Equity in Athletics Data Analysis | USA Facts | DataViz: Federica Gazzelloni")+
   ylab("Total Revenue") +
