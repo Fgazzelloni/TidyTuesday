@@ -15,10 +15,12 @@ Several TidyTuesday interesting examples can be found in the main repository:
 #### Twitter @[fgazzelloni](https://twitter.com/fgazzelloni) and collected in this repository with related code.
 
 ***
-#### Other #DataViz projects I contributed to:
+#### Other #DataViz projects I contribute to:
 
 ##### - [30DayChartChallenge-2021](https://github.com/Fgazzelloni/rstats-chart-challenge-2021)
+##### - [30DayChartChallenge-2022](https://github.com/Fgazzelloni/30DayChartChallenge)
 ##### - [30DayMapChallenge-2021](https://github.com/Fgazzelloni/30DayMapChallenge)
+
 
 ***
 # My #TidyTuesdays
