@@ -42,6 +42,7 @@ Several TidyTuesday interesting examples can be found in the main repository:
 | 12 | `2022-03-22` | [Baby names](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-22/readme.md)|![png](data/2022/w12_babynames/w12_wordcloud.png)
 | 13 | `2022-03-29` | [Collegiate Sports Budgets](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-29/readme.md)|![png](data/2022/w13_sports/w13_sports.png)
 | 14 | `2022-04-05` | [Digital Publications](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-05/readme.md)|![png](data/2022/w14_digital_pub/w14_digital_publications_v2.png)
+|15	| `2022-04-12` | [Indoor Air Pollution](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-12/readme.md)|![png](data/2022/w15_indoor_air_pollution/day12_the_economist.png)
 
 ***
 ## INFO: How to make a #TidyTuesday
