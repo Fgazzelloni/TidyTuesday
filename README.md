@@ -43,7 +43,7 @@ Several TidyTuesday interesting examples can be found in the main repository:
 | 13 | `2022-03-29` | [Collegiate Sports Budgets](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-29/readme.md)|![png](data/2022/w13_sports/w13_sports.png)
 | 14 | `2022-04-05` | [Digital Publications](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-05/readme.md)|![png](data/2022/w14_digital_pub/w14_digital_publications_v2.png)
 |15	| `2022-04-12` | [Indoor Air Pollution](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-12/readme.md)|![png](data/2022/w15_indoor_pollution/day12_theme_day.png)
-|16	| `2022-04-19` | [Crossword Puzzles and Clues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-19/readme.md)|![png](data/2022/w16_crossword/w16_crossword.png/day22_animate.gif)
+|16	| `2022-04-19` | [Crossword Puzzles and Clues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-19/readme.md)|![png](data/2022/w16_crossword/day22_animate.gif)
 |17	| `2022-04-26` | [Kaggle Hidden Gems](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-26/readme.md)| ![png](data/2022/w17_hidden_gems/day28_deviations.png)
 
 ***
