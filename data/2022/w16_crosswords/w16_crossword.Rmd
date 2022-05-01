@@ -1,0 +1,233 @@
+---
+title: "Crossword"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+big_dave <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-04-19/big_dave.csv')
+times <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-04-19/times.csv')
+
+```
+
+```{r}
+big_dave%>%glimpse
+big_dave%>%arrange(-rowid)%>%head
+```
+
+```{r}
+big_dave1 <- big_dave%>% # DataExplorer::profile_missing()
+  select(answer,puzzle_date,puzzle_name) %>%
+  filter(!is.na(answer)) %>%
+  mutate(puzzle_bigdave=gsub("[[:punct:][:blank:]]\\d*","",puzzle_name))
+```
+
+```{r}
+big_dave1%>%count(answer)
+```
+
+
+```{r}
+times%>%glimpse
+times%>%head
+```
+
+```{r}
+times1 <- times%>%
+  select(answer,puzzle_date,puzzle_name) %>% #DataExplorer::profile_missing()
+  filter(!is.na(answer))%>%
+  mutate(puzzle_times=gsub("[[:punct:][:blank:]]\\d*","",puzzle_name))
+```
+
+```{r}
+times1 %>%count(answer)
+```
+
+
+```{r}
+df <- big_dave1 %>%
+  inner_join(times1,by=c("answer","puzzle_date")) %>%
+  arrange(puzzle_date) %>% # 
+  mutate(answer=as.factor(answer)) %>% #DataExplorer::profile_missing()
+  select(-puzzle_name.x,-puzzle_name.y) %>%
+  mutate(year=lubridate::year(puzzle_date),.after=answer,
+         year=as.integer(year))
+ 
+df 
+```
+
+```{r}
+df%>%
+  ggplot(aes(x=year,y=puzzle_bigdave))+
+  geom_col()
+```
+
+```{r}
+library(gganimate)
+colors<- colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(161)
+library(extrafont)
+loadfonts()
+```
+
+```{r}
+library(showtext)
+# 
+font_add_google("Gentium Book Basic","gbb")
+font_add_google("Nanum Gothic","ng")
+showtext_auto()
+```
+
+
+```{r}
+p <- df %>%
+    pivot_longer(cols=c("puzzle_bigdave","puzzle_times"),
+               names_to="names",values_to="values")%>%
+  #count(year)
+  ggplot(aes(puzzle_date, fct_reorder(values,puzzle_date), color = values)) +
+  geom_jitter(show.legend = F,shape=".",color="white")+
+  geom_text(aes(label=answer),
+            size=9,
+            check_overlap = T,family="gbb")+
+  scale_color_manual(values=colors)+
+  labs(title = "\nSame Answers! Year: {closest_state}\nBigDave & Times puzzles\n",  
+       subtitle="\nwords are randomized",
+       caption="#30DayChartChallenge 2022 #Day22\n DataSource: #TidyTuesday week16 - Crossword \n DataViz: Federica Gazzelloni\n\n")+
+  theme_void() +
+  theme(text = element_text(family = "ng", face="bold",color="#F0F8FF"),
+        plot.title = element_text(size=28),
+        plot.subtitle = element_text(size=18),
+        plot.caption = element_text(size=14,vjust=2,hjust=0.5),
+        plot.background = element_rect(fill="grey10",color="grey20"),
+        panel.background = element_rect(fill="grey10",color="grey20"),
+    legend.position = "none")+
+   coord_polar(theta = "x") +
+  transition_states(year, 
+                    transition_length = 2,
+                    state_length = 1,
+                    wrap = F) +
+  shadow_wake(wake_length = 0.5,wrap=F)
+
+
+anim_save(animate(p,res=100,
+                  renderer = gifski_renderer("animation3.gif"),
+                  height = 710, width = 610))
+```
+
+
+
+
+```{r}
+df %>%
+  pivot_longer(cols=c("puzzle_bigdave","puzzle_times"),
+               names_to="names",values_to="values")%>%
+ggplot(aes(year, fct_reorder(values,year), fill = values)) +
+  geom_col() +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.position = "none",
+    panel.grid = element_blank(),
+    panel.grid.major.y = element_line(color = "white"),
+    panel.ontop = TRUE
+  )+
+  coord_polar()+
+  facet_wrap(vars(names))+
+  transition_states(year, wrap = FALSE) +
+  shadow_mark()+
+  enter_grow() +
+  enter_fade()
+```
+
+
+
+
+
+```{r}
+df%>%
+  group_by(puzzle_times)%>%
+  count(year,sort=T)
+```
+
+```{r}
+bd_id <- df%>%
+  arrange(puzzle_date)%>%
+  count(puzzle_bigdave)%>%
+  mutate(bd_id=row_number())#%>%
+  #select(-n)
+
+tm_id <- df%>%
+  arrange(puzzle_date)%>%
+  count(puzzle_times)%>%
+  mutate(tm_id=row_number())#%>%
+  #select(-n)
+
+df1 <- df %>%
+  left_join(bd_id,by=c("puzzle_bigdave"))%>%
+  left_join(tm_id,by="puzzle_times")
+df1
+```
+```{r}
+library(tidyverse)
+library(viridis)
+library(patchwork)
+library(hrbrthemes)
+library(igraph)
+library(ggraph)
+library(colormap)
+```
+
+
+
+
+
+```{r}
+links <-df1%>%
+  mutate(label=paste0(puzzle_bigdave,"-",puzzle_times))%>%
+  rename(source=bd_id,target=tm_id)
+```
+
+
+```{r}
+library(ggbump)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(links,aes(x=source-2,xend=source+5 ,y=target,yend=target+5,
+                 group=label)) +
+  ggbump::geom_sigmoid(aes(color=puzzle_bigdave),show.legend = F)+
+  geom_text(aes(x=source-2,label=puzzle_bigdave),size=3,
+            vjust="bottom",hjust="right",check_overlap = T,show.legend = F)+
+  geom_text(aes(x=source+5,y=target+5,label=puzzle_times),size=3,
+            vjust="bottom",hjust="left",check_overlap = T,show.legend = F)+
+  geom_text(aes(label=answer,color=answer),size=3,
+            vjust="bottom",hjust="left",check_overlap = T,show.legend = F)
+    coord_flip()
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+lot(df, aes(x=year, y= fct_reorder(puzzle_bigdave,year)))+
+  geom_col()+
+  #scale_x_continuous(breaks=seq(2014,2021,1))
+  labs(title="Big Dave")
+
+ggplot(df, aes(x=puzzle_date, y= puzzle_times))+
+  geom_col()+
+  labs(title="Times")
+```
+
