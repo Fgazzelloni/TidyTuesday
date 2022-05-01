@@ -1,0 +1,97 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE,message=FALSE, warning=FALSE, paged.print=FALSE,comment=""}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+
+
+```{r}
+hidden_gems <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-04-26/hidden_gems.csv')
+```
+
+
+```{r}
+df <- hidden_gems%>%
+  count(vol,date,title,review,author_kaggle,author_name)
+```
+
+
+```{r}
+df1 <- df %>%  #pull(date)%>%summary
+  mutate(ym=zoo::as.yearmon(date),
+         year=lubridate::year(date))%>%
+  unnest_tokens(word,review) %>%
+  anti_join(get_stopwords()) %>%
+  filter(!str_detect(word,"kaggle|c|https|2020|2021|also|end|r")) %>%
+  count(author_name,word,sort=T) %>%
+
+ inner_join(bing) %>%
+  mutate(sentiment2=sentiment)%>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative) %>%
+  mutate(index=row_number())%>%
+  relocate(index) %>% #count(word,sort=T)
+  mutate(word=reorder(word,-index)) 
+ 
+  
+```
+
+```{r}
+my_words<-df1 %>%
+  count(word,sort=T)%>%
+  filter(n>1) %>%
+  select(-n) %>%
+  unlist()
+  
+  
+df2 <- df1 %>%
+   filter(word %in% my_words) 
+```
+
+
+Notches are used to compare groups; if the notches of two boxes do not overlap, this suggests that the medians are significantly different.
+```{r}
+
+df2 %>%
+  mutate(word=toupper(word))%>%
+  mutate(word=as.factor(word),
+         word=reorder(word,-index))%>% #count(index,sort=T)
+  ggplot(aes(x=index,y=fct_reorder(word,sentiment),fill=sentiment2))+ # 
+  geom_boxplot(size=0.5,
+               outlier.size = 0.3,outlier.shape = 21,
+               notch = T) +
+  geom_jitter(size=0.3,shape=21,stroke=0.5)+
+  coord_cartesian(xlim = c(-1,260),ylim=c(0,35),clip="off")+
+  labs(title="How vary are words in the Hidden Gems Reviews?",
+       subtitle="Some words repeated themselves more frequently than others,\nwith significantly different medians.",
+       caption="#30DayChartChallenge 2022 #Day28 - Deviations\nDataSource: #TidyTuesday Week17 - Hidden Gems\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       x="",y="",fill="Sentiment")+
+  tvthemes::scale_fill_rickAndMorty()+
+  tvthemes::theme_rickAndMorty()+
+  theme(plot.background = element_rect(fill="grey80"),
+        legend.background = element_rect(fill=NA),
+        legend.position = c(0.9,0.9),
+        plot.title = element_text(face="bold",size=22),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(size=12),
+        axis.text.x = element_blank())+
+  annotate("text",x=-70,y=-2.5,label="How to read this graph:\n- the notches represent the median of the frequency of words\nfound in the Hidden Gems reviews by Author\n- the sidebars represent their deviations",
+           hjust=0,size=3)
+```
+
+
+```{r}
+ggsave("day28_deviations.png",
+       dpi=320,
+       width = 8,
+       height = 10)
+```
