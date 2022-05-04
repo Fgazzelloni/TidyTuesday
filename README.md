@@ -45,6 +45,7 @@ Several TidyTuesday interesting examples can be found in the main repository:
 |15	| `2022-04-12` | [Indoor Air Pollution](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-12/readme.md)|![png](data/2022/w15_indoor_pollution/day12_theme_day.png)
 |16	| `2022-04-19` | [Crossword Puzzles and Clues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-19/readme.md)|![png](data/2022/w16_crosswords/day22_animate.gif)
 |17	| `2022-04-26` | [Kaggle Hidden Gems](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-26/readme.md)| ![png](data/2022/w17_hidden_gems/day28_deviations.png)
+|18| `2022-05-03`| [Solar/Wind utilities](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-05-03/readme.md)| ![png](data/2022/w18_solar_wind/w18_solar_wind.png)
 
 ***
 ## INFO: How to make a #TidyTuesday
