@@ -26,26 +26,17 @@ Several TidyTuesday interesting examples can be found in the main repository:
 # My #TidyTuesdays
 ## [2021](data/2021) | [2022](data/2022)
 
-| Week | Date | Data | my contribution 
-| :---: | :---: | :--- | :--- 
-| 1 | `2021-01-04` | Bring your own data to start 2022!() | ![png](data/2022/w1_your_own_data/your_own_data.png)
-| 2 | `2022-01-11` | [Bee Colony losses](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-11/readme.md)|![png](data/2022/w2_bees/w2_bees.png)
-| 3 | `2022-01-18` | [Chocolate Bar ratings](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-18/readme.md) |![png](data/2022/w3_chocolate/w3_chocolate.png)
-| 4 | `2022-01-25` | [Board games](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-25/readme.md)|![png](data/2022/w4_board_games/w4_board_games.png)
-| 5 | `2022-02-01` | [Dog breeds](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-01/readme.md)|![png](data/2022/w5_dogs/dog_prints_plot.png)
-| 6 | `2022-02-08` | [Tuskegee Airmen](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-08/readme.md)|![png](data/2022/w6_airforce/w6_airforce.png)
-| 7 | `2022-02-15` | [`#DuBoisChallenge2022`](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-15/readme.md)|![png](data/2022/w7_dubois/w7_number6.png)
-| 8 | `2022-02-22` | [World Freedom index](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-22/readme.md)|![png](data/2022/w8_wfi/freedom.png)
-| 9 | `2022-03-01` | [Alternative Fuel Stations](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-01/readme.md)|![png](data/2022/w9_stations/w9_stations.png)
-| 10 | `2022-03-08` | [Erasmus student mobility](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-08/readme.md) |![png](data/2022/w10_erasmus/er-network.png)
-| 11 | `2022-03-15` | [CRAN/BIOC Vignettes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-15/readme.md)|![png](data/2022/w11_vignettes/w11_vignettes.png)
-| 12 | `2022-03-22` | [Baby names](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-22/readme.md)|![png](data/2022/w12_babynames/w12_wordcloud.png)
-| 13 | `2022-03-29` | [Collegiate Sports Budgets](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-29/readme.md)|![png](data/2022/w13_sports/w13_sports.png)
-| 14 | `2022-04-05` | [Digital Publications](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-05/readme.md)|![png](data/2022/w14_digital_pub/w14_digital_publications_v2.png)
-|15	| `2022-04-12` | [Indoor Air Pollution](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-12/readme.md)|![png](data/2022/w15_indoor_pollution/day12_theme_day.png)
-|16	| `2022-04-19` | [Crossword Puzzles and Clues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-19/readme.md)|![png](data/2022/w16_crosswords/day22_animate.gif)
-|17	| `2022-04-26` | [Kaggle Hidden Gems](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-26/readme.md)| ![png](data/2022/w17_hidden_gems/day28_deviations.png)
-|18| `2022-05-03`| [Solar/Wind utilities](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-05-03/readme.md)| ![png](data/2022/w18_solar_wind/w18_solar_wind.png)
+|[Week1<br>Bring your own data to start 2022](data/2022/w1_your_own_data/)| [Week2](data/2022/w2_bees)<br>[Bee Colony losses](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-11/readme.md)| [Week3](data/2022/w3_chocolate)<br>[Chocolate Bar ratings](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-18/readme.md)| [Week4](data/2022/w4_board_games)<br>[Board games](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-25/readme.md)|
+| :---: | :---: | :---: | :---: 
+|![w1](data/2022/w1_your_own_data/your_own_data.png)|![w2](data/2022/w2_bees/w2_bees.png)|![w3](data/2022/w3_chocolate/w3_chocolate.png)|![w4 `2022-01-25`](data/2022/w4_board_games/w4_board_games.png)|
+[Week5](data/2022/w5_dogs)<br>[Dog breeds](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-01/readme.md)|[Week6](data/2022/w6_airforce)<br>[Tuskegee Airmen](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-08/readme.md)|[Week7](ata/2022/w7_dubois)<br>[`#DuBoisChallenge2022`](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-15/readme.md) | [Week8](data/2022/w8_wfi)<br>[World Freedom index](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-02-22/readme.md)| 
+|![5 `2022-02-01`](data/2022/w5_dogs/dog_prints_plot.png)|![6`2022-02-08`](data/2022/w6_airforce/w6_airforce.png)|![7 `2022-02-15`](data/2022/w7_dubois/w7_number6.png)|![8 `2022-02-22`](data/2022/w8_wfi/freedom.png)
+|[Week9](data/2022/w9_stations)<br>[Alternative Fuel Stations](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-01/readme.md)|[Week10](data/2022/w10_erasmus)<br>[Erasmus student mobility](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-08/readme.md)|[Week11](data/2022/w11_vignettes)<br>[CRAN/BIOC Vignettes](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-15/readme.md)|[Week12](data/2022/w12_babynames)<br>[Baby names](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-22/readme.md)|
+| ![9`2022-03-01`](data/2022/w9_stations/w9_stations.png)|![10 `2022-03-08`](data/2022/w10_erasmus/er-network.png)|![11`2022-03-15`](data/2022/w11_vignettes/w11_vignettes.png)|![12`2022-03-22`](data/2022/w12_babynames/w12_wordcloud.png)
+|[Week13](data/2022/w13_sports)<br>[Collegiate Sports Budgets](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-03-29/readme.md)|[Week14](data/2022/w14_digital_pub)<br>[Digital Publications](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-05/readme.md)|[Week15](data/2022/w15_indoor_pollution)<br>[Indoor Air Pollution](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-12/readme.md)|[Week16](data/2022/w16_crosswords)<br>[Crossword Puzzles and Clues](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-19/readme.md)|
+|![13`2022-03-29`](data/2022/w13_sports/w13_sports.png)|![14`2022-04-05`](data/2022/w14_digital_pub/w14_digital_publications_v2.png)|![15`2022-04-12`](data/2022/w15_indoor_pollution/day12_theme_day.png)|![16`2022-04-19`](data/2022/w16_crosswords/day22_animate.gif)
+|[Week17](data/2022/w17_hidden_gems)<br>[Kaggle Hidden Gems](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-04-26/readme.md)|[Week18](data/2022/w18_solar_wind)<br>[Solar/Wind utilities](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-05-03/readme.md)|[Week19](data/2022/w19_nyt)<br>[NYTimes best sellers](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-05-10/readme.md)|[Week20](data/2022/w20_)<br>[Eurovision](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-05-17/readme.md)|
+|![17`2022-04-26`](data/2022/w17_hidden_gems/day28_deviations.png)|![18`2022-05-03`](data/2022/w18_solar_wind/w18_solar_wind.png)|![19 `2022-05-10`](data/2022/w19_nyt/w19_nyt.png)|![20 `2022-05-17`](data/2022_w20_)
 
 ***
 ## INFO: How to make a #TidyTuesday
