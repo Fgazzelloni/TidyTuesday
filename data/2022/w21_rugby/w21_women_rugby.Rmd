@@ -1,0 +1,117 @@
+---
+title: "#TidyTuesday week 21 - 2022 Women's Rugby"
+author: Federica Gazzelloni
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+
+```{r}
+sevens <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-24/sevens.csv')
+fifteens <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-24/fifteens.csv')
+
+```
+
+
+
+```{r}
+my_df <- sevens%>%
+  mutate(year_month=zoo::as.yearmon(date),.after=date) %>%
+  filter(score_1=="L" | score_1=="W") %>%
+  #select(-winner,-loser) %>%
+  pivot_longer(cols = c("team_1","team_2"),names_to="teams",values_to="t_country")%>%
+  relocate(teams,t_country,winner,loser) %>%
+  distinct()%>%
+  mutate(final=ifelse(t_country==winner,"Winner","Loser"))%>%
+  relocate(final) 
+```
+
+```{r}
+my_df%>% # count(t_country)
+  count(t_country,teams,final)%>%
+  group_by(t_country)%>%
+  summarize(final,teams,pct=round(n/sum(n)*100))%>%
+  filter(!pct==100)
+```
+
+
+```{r}
+my_df%>% # count(t_country)
+  count(t_country,teams,final)%>%
+  group_by(t_country)%>%
+  summarize(final,teams,pct=round(n/sum(n)*100))%>%
+  filter(!pct==100)%>%
+  ungroup()%>%
+pivot_wider(names_from=teams,values_from=pct)
+```
+
+```{r}
+library(extrafont)
+loadfonts()
+```
+
+
+```{r}
+library(ggbump)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+my_df %>%
+  select(row_id,date,year_month,teams,t_country,final) %>%
+  mutate(t_country=case_when(t_country=="Arabian Gulf"~"* Arabian Gulf",
+                             t_country=="Burkina Faso"~"* Burkina Faso",
+                             t_country=="Cote d'Ivorie"~"* Cote d'Ivorie",
+                             t_country=="Ghana"~"* Ghana",
+                             t_country=="Hong Kong"~"* Hong Kong",
+                             t_country=="Kazakhstan"~"* Kazakhstan",
+                             TRUE~t_country))%>%
+  ggplot(aes(x=1,y=t_country,color=teams)) +
+  ggbump::geom_sigmoid(aes(x=1,y=t_country,
+                           xend=year_month+1, yend=final),
+                       key_glyph = draw_key_rect)+
+  geom_text(aes(label=t_country,x=0),
+            hjust=1,family="Comic Sans MS")+
+  geom_text(aes(label=final,x=2000,y=final),family="Comic Sans MS",
+            size=6,hjust=0) +#c("Winner","Loser")
+  xlim(-300,2200)+
+  labs(title="Women's Rugby - Countries without scores",
+       subtitle = "from December 2000 to May 2010",
+       caption="\n* 6 countries out of 21 shared a winner/loser position while being either in team 1 or team 2\nBurkina Faso is the only one who won being in Team 2 with 67% pct, most wins are from Team 1\nCote d'Ivorie won and lost 50%/50% pct in both teams\n\nDataSource: #TidyTuesday 2022 week21 - Women's Rugby - ScrumQueens\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       color="")+
+  viridis::scale_color_viridis(discrete=T,option="inferno",
+                                alpha = 1,begin = 0.5,end = 0.8,
+                               labels = c("Team 1", "Team 2"), breaks = c("team_1", "team_2"))+
+  theme_void()+
+  theme(text = element_text(family="Comic Sans MS",size=23,color="darkorange"),
+    legend.position = c(0.8,0.2),
+    plot.title = element_text(hjust = 0.1),
+    plot.subtitle = element_text(hjust = 0.1,size=20),
+    plot.caption = element_text(size=10,hjust=0,color="darkorange"),
+    plot.background = element_rect(fill="beige",color="beige"),
+    panel.background = element_rect(fill="beige",color="beige"),
+    plot.margin = margin(5,5,5,5,unit = "pt"))
+```
+
+```{r}
+ggsave("w21_women_rugby.png",
+       width = 8.5,
+       height = 7,
+       dpi=320)
+```
+
+
+
+```{r}
+fifteens%>%head
+```
+
+
