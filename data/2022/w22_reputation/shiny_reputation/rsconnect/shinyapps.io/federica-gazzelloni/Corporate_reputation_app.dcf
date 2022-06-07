@@ -1,0 +1,14 @@
+name: Corporate_reputation_app
+title: Corporate_reputation_app
+username:
+account: federica-gazzelloni
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6418029
+bundleId: 5971201
+url: https://federica-gazzelloni.shinyapps.io/Corporate_reputation_app/
+when: 1654168826.44226
+lastSyncTime: 1654168826.44228
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: notes.R
