@@ -1,0 +1,79 @@
+---
+title: "w22 Company reputation poll"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Axios and Harris Poll to gauge the reputation of the most visible brands in America, based on 20 years of Harris Poll research. 
+Based on a survey of 33,096 Americans in a nationally representative sample conducted March 11-April 3, 2022. 
+
+Each company received approximately 325 ratings. An RQ score is calculated by: [ (Sum of ratings of each of the 9 attributes)/(the total number of attributes answered x 7) ] x 100.
+
+Score ranges: 80 & above: Excellent | 75-79: Very Good | 70-74: Good | 65-69: Fair | 55-64: Poor | 50-54: Very Poor | Below 50: Critical
+```{r}
+library(tidyverse)
+```
+
+```{r}
+poll <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-31/poll.csv')
+reputation <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-31/reputation.csv')
+```
+```{r}
+poll%>%head
+```
+```{r}
+reputation%>%head
+```
+```{r}
+library(extrafont)
+# loadfonts()
+```
+
+```{r}
+p<-reputation%>%
+  arrange(rank) %>%
+  filter(!industry=="Other")%>%
+  mutate(name=reorder(name,score),
+         industry=factor(industry),
+         industry=reorder(industry,-score))%>%
+  ggplot(aes(x=score,y=rank,color=name))+
+  geom_point(size=1,shape=21,stroke=0.5)+
+  geom_line(linetype="dashed")+
+  scale_y_reverse(limits=c(100,1))+
+  facet_wrap(~industry, ncol = 6)+
+  ggthemes::scale_color_colorblind()+
+  guides(color=guide_legend(nrow=1,byrow=TRUE,title.position = "left"))+
+  coord_polar(theta = "y",start = 1000, direction = 1, clip = "off")+
+labs(title="Corporate Reputation Rankings - 2022",
+     subtitle="100 most visible companies grouped by 18 industries are scored in 7 categories",
+     caption="\nDataSource: #TidyTuesday 2022 week22 - Axios and Harris Poll\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+     x="",
+     y="Rank vs Score polarized dotted lines shows Citizenship is the dominant reputation category for all industries, followed by Ethics and Trust,\nCulture, P&S(Product and Service), Growth, and Vision, in this order for most of the industries.\nIndustries are ordered by the highest score received by each reputation category.\nRetail shows a full score trend contrasting Insurance with just one rank/score for each category.",
+     color="Reputation category")+
+  theme_linedraw()+
+  theme(text=element_text(family="Roboto Condensed"),
+        axis.title = element_text(size=10,hjust=0),
+        plot.title = element_text(size=30),
+        plot.subtitle = element_text(size=14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks = element_blank(),
+        strip.background = element_rect(color="grey20",fill="grey20"),
+        plot.background = element_rect(color="grey30"))
+```
+
+
+
+
+```{r}
+ggsave("w22_reputation2.png",
+       dpi=320,
+       width = 9,
+       height = 7)
+```
+
