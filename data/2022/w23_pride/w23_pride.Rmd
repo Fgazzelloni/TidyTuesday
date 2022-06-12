@@ -1,0 +1,131 @@
+---
+title: "#TidyTuesday 2022 week23: Data for Progress’ Pride Corporate Accountability Project"
+author: Federica Gazzelloni
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data for Progress’ Pride Corporate Accountability
+
+```{r lib, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+
+### Fortune500 
+
+```{r data}
+# pride_aggregates <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/pride_aggregates.csv')
+fortune_aggregates <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/fortune_aggregates.csv')
+#static_list <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/static_list.csv')
+#pride_sponsors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/pride_sponsors.csv')
+#corp_by_politicians <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/corp_by_politicians.csv')
+#donors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-07/donors.csv')
+
+```
+
+```{r}
+fortune_aggregates %>% names
+```
+```{r}
+names(fortune_aggregates)<-c("company","tot_contr","n_politicians","n_states")
+```
+
+
+```{r}
+fortune_aggregates%>%head
+```
+
+
+```{r}
+library(extrafont)
+# loadfonts()
+```
+
+
+```{r}
+library(ggtext)
+id=c("1","2","3","4","5","6","7")
+plot <- fortune_aggregates%>%
+  arrange(-tot_contr) %>%
+  filter(!company=="Grand Total" # tot_contr>=50000
+         ) %>%
+  slice_max(tot_contr,n=7)%>%
+  mutate(company=reorder(as.factor(company),tot_contr))  %>%
+  ggplot(aes(x=company, y=tot_contr)) +
+  geomtextpath::geom_textsegment(aes(xend=company,y=1,yend=tot_contr,
+                                     label=company),
+                                 family="Public Sans Medium",
+                                 textcolour=rainbow(7),
+                                 size=7,linewidth=7,
+                                 lineend = "butt",linecolour=rainbow(7)) +
+  geom_point( color=rainbow(7), size=7) +
+  geom_point( color=rainbow(7), size=12,shape=21,stroke=2) +
+  geom_point(shape=id,color="black", size=7) +
+  coord_flip()+
+  labs(title="Top 7 <span style='color:gold'>Anti-LGBTQ</span>",
+       subtitle="contributors by Fortune500",
+       caption="Viz:@fgazzelloni | DataSource: #TidyTuesday 2022 week23 -<span style='color:#4b2d8f'>Data for Progress’ Pride Corporate Accountability</span>")+
+  xlab("") +
+  ylab("")+
+  theme_light() +
+  theme(text = element_text(color="grey80",size=25,family="Public Sans Medium"),
+        plot.title = element_markdown(size=45),
+        plot.caption = element_markdown(size=12,hjust=0),
+        plot.subtitle = element_text(hjust=0),
+    panel.grid.major.x = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill="black",color="black"),
+    panel.background = element_rect(fill="black",color="black")
+  ) 
+```
+
+
+
+
+```{r}
+library(cowplot)
+
+ggdraw()+
+  draw_plot(plot)+
+  draw_label("Data for Progress",
+             x=0.7,
+             y=0.35,
+             size=60,
+             alpha = 0.2,
+             fontfamily = "Public Sans Medium",
+             color = "white")+
+  draw_label("F500",
+             x=0.5,
+             y=0.45,
+             size=350,
+             alpha = 0.2,
+             fontfamily = "Public Sans Medium",
+             color = "white")+
+    draw_label("Data for Progress has compiled a set of resources for\nactivists, employees, community leaders, and lawmakers\nto push back on these policies and the prejudice powering them.",
+             x=0.7,
+             y=0.25,
+             size=15,
+             fontfamily = "Public Sans Medium",
+             color = "grey90")
+  
+
+ggsave("w23_pride.png",
+       dpi=320,
+       width = 12,
+       height = 7)
+```
+
+
+
+
+
