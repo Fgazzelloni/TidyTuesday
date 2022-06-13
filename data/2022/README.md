@@ -4,4 +4,5 @@
 
 https://github.com/Fgazzelloni/TidyTuesday
 
-![png](data/2022/gather/puzzle.png)
+![png](gather/puzzle.png)
+This is made with {gt} package
