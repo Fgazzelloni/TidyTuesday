@@ -3,3 +3,5 @@
 2022 series of `#TidyTuesday` data visualizations.
 
 https://github.com/Fgazzelloni/TidyTuesday
+
+![png](data/2022/gather/puzzle.png)
