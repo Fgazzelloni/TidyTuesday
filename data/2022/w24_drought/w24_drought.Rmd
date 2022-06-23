@@ -1,0 +1,113 @@
+---
+title: "Drought"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Drought HEX
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(broom)
+library(geojsonio)
+library(RColorBrewer)
+library(rgdal)
+library(rgeos)
+library(extrafont)
+# loadfonts()
+```
+
+```{r}
+#tuesdata <- tidytuesdayR::tt_load('2022-06-14')
+drought_fips <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-14/drought-fips.csv')
+```
+
+### Verify the avg level of drought for each state
+
+```{r}
+drought_fips%>%
+  group_by(State)%>%
+  summarise(drought=mean(DSCI))%>%
+  ungroup() %>%
+  ggplot(aes(x=fct_reorder(State,-drought),y=drought))+
+  geom_col()+
+  labs(x="",y="",
+       title="Avg level of drought for each state")+
+  ggthemes::theme_economist_white()+
+  theme(axis.text.x = element_text(size=5))
+```
+
+```{r}
+drought_avg<- drought_fips%>%
+  group_by(State)%>%
+  summarise(drought=mean(DSCI))%>%
+  ungroup()
+```
+
+### Load the map hex data and make extra features
+
+```{r}
+# load json data
+map_hex <- 
+  geojson_read("us_states_hexgrid.geojson.json",  what = "sp")
+
+# set the names
+map_hex@data <-
+  map_hex@data %>%
+  mutate(google_name = gsub(" \\(United States\\)", "", google_name))
+
+
+# make a smaller sized hex 
+map_hex_buffer <- gBuffer(map_hex, width = -.15, byid = T)
+
+# tidy to dataframe
+map_hex_tidy <- tidy(map_hex_buffer, region = "iso3166_2")
+
+# add drought level
+hex_drought <- 
+  map_hex_tidy %>%
+  left_join(drought_avg, by = c("id"="State"))
+
+# make the centroids with state names
+centr <- cbind.data.frame(data.frame(gCentroid(map_hex_buffer, byid = T), 
+                                     id = map_hex@data$iso3166_2))
+```
+
+### Make the map hex with avg drought level
+
+```{r}
+ggplot()+
+geom_polygon(data=map_hex,
+mapping=aes(long,lat,group=group),
+fill="brown",
+color="#f8bc05")+
+geom_polygon(data=hex_drought,
+mapping=aes(long,lat,group=group,fill=drought),
+color="white")+
+geom_text(data=centr,
+aes(x=x, y=y, label=id),
+color="white",size=2,fontface="bold") +
+scale_fill_gradient(low = "grey", high = "brown")+
+labs(title="US intense drought locations",
+caption="DataSource: #TidyTuesday 2022 week24 & Drought.gov | DataViz: @FGazzelloni",
+fill="Level")+
+coord_map()+
+ggthemes::theme_map()+
+theme(text=element_text(color="white",family="Chelsea Market"),
+panel.background = element_rect(fill="#162e51",color="#f8bc05",size=1),
+plot.background = element_rect(fill="#0071bc",color="#f8bc05",size=1),
+plot.title = element_text(size=20,color="#f8bc05"),
+legend.background = element_rect(fill="#0071bc",color="#f8bc05",size=0.5),
+legend.position = c(0.01,0.3))
+```
+```{r}
+ggsave("w24_drought.png",
+dpi=320,
+width = 5.9,
+height = 4)
+```
+
+
