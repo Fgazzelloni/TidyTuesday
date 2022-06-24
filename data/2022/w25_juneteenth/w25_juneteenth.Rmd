@@ -1,0 +1,120 @@
+---
+title: "w25_juneteenth"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(showtext)
+font_add(family = "Public Sans Thin",
+         regular = "PublicSans-Thin.ttf")
+  
+font_add(family="PublicSans-Medium",
+         regular="PublicSans-Medium.ttf")
+  
+showtext_auto()
+  #showtext::showtext_opts(dpi=320)
+```
+
+```{r}
+ colors<- c("#dbcab9", #warm-gre,
+   "#cf2e49", #red
+   "#E97E7E", #pale-red
+   "#efb441", #orange
+   "#5f6faa", #blue
+   "#5f705d", #dark-green
+   "#d4c0a1", #light-brown
+   "#6c452f", #dark-brown
+   "black")
+```
+
+```{r}
+census <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-06-16/census.csv')
+```
+
+```{r}
+df_census<-census %>% #count(year)
+  filter(!region=="USA Total") %>%
+  mutate(division=ifelse(is.na(division),"Other",division)) %>%
+  pivot_longer(cols = c(-region,-division,-year),names_to="names",values_to="values") %>%
+  mutate(names = str_to_title(names),
+         names = gsub("_"," ",names)) %>%
+  filter(!values==0) %>%arrange(values) %>% 
+  group_by(year)%>%
+  mutate(avg_values=mean(values)) %>%
+  ungroup() %>% 
+  mutate(division=reorder(factor(division),values),
+         region=reorder(factor(region),values))  
+  
+df_census
+```
+
+```{r}
+black_free<- df_census %>% 
+  filter(names=="Black free") %>%
+  group_by(year)%>%
+  summarize(tot=sum(values)) %>%
+  ungroup() %>%
+mutate(pct=round(tot/sum(tot)*100,2),
+       year=as.factor(year)) 
+
+black_slaves<- df_census %>% #count(names)
+  filter(names=="Black slaves") %>%
+  group_by(year)%>%
+  summarize(tot=sum(values)) %>%
+  ungroup() %>%
+mutate(pct=round(tot/sum(tot)*100,2),
+       year=as.factor(year)) 
+
+black<- df_census %>% #count(names)
+  filter(names=="Black") %>%
+  group_by(year)%>%
+  summarize(tot=sum(values)) %>%
+  ungroup() %>%
+mutate(pct=round(tot/sum(tot)*100,2),
+       year=as.factor(year))
+
+
+bar_plot <- ggplot()+
+  aes(x=desc(year), y=pct, fill=pct) +
+  geom_bar(data=black_free,width = 4, stat = "identity",color="black",fill="#5f705d",position="identity") +
+  geom_bar(data=black_slaves,width = 0.5, stat = "identity",color="black",fill="#E97E7E",position="identity") +
+  geom_bar(data=black,width = 0.2, stat = "identity",color="black",fill="#efb441",position="identity") +
+  scale_y_continuous(expand = expansion(mult=c(0,1),add=c(0,0)))+
+  #scale_x_discrete(expand = expansion(mult=c(5,0),add=c(0,0)))
+  coord_polar("y", start=-89.55, clip = 'off') +
+  theme_void()+
+  theme(plot.title = element_text(hjust=0.5),
+        plot.subtitle = element_text(hjust=0.5),
+        plot.background = element_rect(fill="#d4c0a1",color="#d4c0a1"),
+        panel.background = element_rect(fill="#d4c0a1",color="#d4c0a1"))
+
+bar_plot
+```
+
+
+
+
+```{r}
+library(cowplot)
+ ggdraw()+
+   #draw_plot(bar_plot)+
+   draw_image("bar_plot.png",scale=2,x=0.1,y=-0.2)+
+   draw_label(label = "1790 1800 1810 1820 1830 1840 1850 1860 1870",
+              x=0.35,y=0.25,size=12)+
+   draw_label("NEGROE status transition",x=0.5,y=0.9,fontfamily = "PublicSans-Medium")+
+   draw_label("ABRAHAM LINCOLN: “ON THE 1ST DAY OF JANUARY, A.D. 1863, ALL PERSONS HELD AS SLAVES WITHIN ANY STATE...
+              IN REBELLION AGAINST THE U.S. SHALL BE THEN, THENCEFORWARD AND FOREVER FREE”",
+              x=0.1,y=0.8,hjust=0,
+              size=8)+
+   draw_label("How to read it:\nInspired by #DuboisChallenge style.\nEach bar represent a year. Each color represent a class: black slaves (dark green), black free (light red), and black (orange)\nThe last bar (1870) clearly shows the highest percentage of free slaves, from that day on.", x=0.1,y=0.1,hjust=0,size=7.5,fontfamily = "Public Sans Thin")+
+   draw_label("DataSource: #TidyTuesday 2022 week25 Juneteenth | US Census's Archives | DataViz: Federica Gazzelloni (@fgazzelloni)\n",x=0.5,y=0.01,size=7)
+```
+
+
+
+
