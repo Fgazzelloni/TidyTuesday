@@ -1,0 +1,280 @@
+---
+title: "week26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+
+```{r}
+paygap <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-06-28/paygap.csv')
+```
+
+
+```{r}
+paygap%>%head
+```
+
+```{r}
+paygap%>%names
+```
+```{r}
+df <- paygap%>% # count(employer_id,sort=T)
+  arrange(employer_id) %>%
+  group_by(employer_id)%>%
+  summarize(employer_size,across(.cols = is.numeric,median)) %>%
+  ungroup()
+  
+df
+```
+
+## df_bonus
+
+```{r}
+df_bonus <- df%>% #DataExplorer::profile_missing()
+  select(employer_id,employer_size,contains("bonus")) %>%
+  filter(!employer_size=="Not Provided") %>%
+  mutate(id=case_when(employer_size=="Less than 250"~1,
+                      employer_size=="250 to 499"~2,
+                      employer_size=="500 to 999"~3,
+                      employer_size=="1000 to 4999"~4,
+                      employer_size=="5000 to 19,999"~5,
+                      employer_size=="20,000 or more"~6)) %>%
+  relocate(id) %>%
+  arrange(id)
+
+df_bonus %>% DataExplorer::profile_missing()
+```
+
+
+```{r}
+df_bonus %>%
+  #group_by(employer_size) %>%
+  #summarize(across(is.numeric,.fns = median)) %>%
+  #ungroup() %>%
+  ggplot(aes(x=male_bonus_percent,y=female_bonus_percent))+
+  geom_boxplot(aes(group=employer_size),size=0.2)+ 
+  geom_point(size=0.1,aes(color=employer_id))+
+  geom_abline(intercept = max(df_bonus$male_bonus_percent),slope=-1,size=0.1,linetype="dashed")+
+  geom_abline(intercept = 0,slope=1,size=0.5,linetype="dashed",color="red")+
+  geom_smooth(method="lm")
+```
+```{r}
+df_bonus%>%
+  filter(male_bonus_percent>50,female_bonus_percent<50) %>%
+    ggplot(aes(x=male_bonus_percent,y=female_bonus_percent))+
+ # geom_boxplot(aes(group=employer_size),size=0.2)+ 
+  geom_point(size=0.1,aes(color=employer_id))+
+  geom_abline(intercept = max(df_bonus$male_bonus_percent),slope=-1,size=0.5,linetype="dashed")+
+  geom_abline(intercept = 0,slope=1,size=0.5,linetype="dashed",color="red")+
+  geom_text(aes(label=employer_id),check_overlap = T,size=2)+
+  geom_smooth(method="lm")
+```
+```{r}
+library(tidymodels)
+```
+
+
+```{r}
+pay_bonus_pca<- df_bonus %>%
+  select(-employer_size) %>%
+  drop_na() %>%
+  prcomp(scale = TRUE)
+
+tidy(pay_bonus_pca, matrix = "scores") %>%
+  filter(PC%in%c(1,2)) %>%
+  pivot_wider(names_from=PC,values_from=value)%>%
+  janitor::clean_names() %>%
+  ggplot(aes(x=x1,y=x2))+
+    geom_point()
+```
+
+
+```{r}
+df%>%count(employer_size)
+```
+
+
+
+
+```{r}
+df %>%
+  mutate(id=case_when(employer_size=="Less than 250"~1,
+                      employer_size=="250 to 499"~2,
+                      employer_size=="500 to 999"~3,
+                      employer_size=="1000 to 4999"~4,
+                      employer_size=="5000 to 19,999"~5,
+                      employer_size=="20,000 or more"~6)) %>%
+  relocate(id) %>%
+  arrange(id) 
+  #DataExplorer::profile_missing()
+
+```
+
+
+Sampling
+```{r}
+df1<-df %>%
+  mutate(id=case_when(employer_size=="Less than 250"~1,
+                      employer_size=="250 to 499"~2,
+                      employer_size=="500 to 999"~3,
+                      employer_size=="1000 to 4999"~4,
+                      employer_size=="5000 to 19,999"~5,
+                      employer_size=="20,000 or more"~6)) %>%
+  relocate(id) %>%
+  arrange(id)
+df1
+# library(sampling)
+# strata(df1,size=300)
+```
+
+
+
+
+```{r}
+df2<-df %>% #DataExplorer::profile_missing()
+  filter(!is.na(female_lower_quartile),!employer_size=="Not Provided") %>%
+  select(!contains("bonus")) %>%
+  mutate(id=case_when(employer_size=="Less than 250"~1,
+                      employer_size=="250 to 499"~2,
+                      employer_size=="500 to 999"~3,
+                      employer_size=="1000 to 4999"~4,
+                      employer_size=="5000 to 19,999"~5,
+                      employer_size=="20,000 or more"~6)) %>%
+  relocate(id) %>%
+  arrange(id) %>%
+  group_by(id,employer_size)%>%
+  mutate(n=n()) %>%
+  ungroup() %>%
+  mutate(pct=round(n/sqrt(sum(n))*100,5))%>%#count(pct,n) %>%
+  relocate(n,pct)%>%
+  group_by(id,employer_size)%>%
+  summarise(across(.cols = everything(),.fns = mean)) %>%
+  ungroup() %>%
+ # select(-diff_mean_bonus_percent) %>%
+  #mutate(diff_mean_bonus=round(male_bonus_percent-female_bonus_percent,2)) %>%
+  mutate_if(is.numeric, round, 2)
+df2
+```
+```{r}
+df2 %>%
+  arrange(id)%>%names
+```
+
+
+
+```{r}
+df2 %>%
+  arrange(id)%>%
+  ggplot(aes(x=25,y=fct_reorder(employer_size,id),label=employer_size))+
+  geom_point(color="grey80",shape=".")+
+  geom_text(hjust=1)+
+  geom_text(aes(x=30,label=paste0(diff_mean_hourly_percent,"%"))) +
+  # lower
+  geomtextpath::geom_textsegment(label="Lower",size=4,
+                                 aes(x=female_lower_quartile,xend=male_lower_quartile,yend=employer_size),
+               position = position_nudge(y = 0.25),
+               color="grey50",size=0.5)+
+  geom_point(aes(x=female_lower_quartile,y=employer_size),
+             position = position_nudge(y = 0.25),
+             color="violet",size=5)+
+  geom_point(aes(x=male_lower_quartile,y=employer_size),
+             position = position_nudge(y = 0.25),
+             color="navy",size=5)+
+  # upper
+    geomtextpath::geom_textsegment(label="Upper",size=4,
+                            aes(x=female_top_quartile,xend=male_top_quartile,yend=employer_size),
+                            color="grey50",size=0.5)+
+  geom_point(aes(x=female_top_quartile,y=employer_size),color="violet",size=5)+
+  geom_point(aes(x=male_top_quartile,y=employer_size),color="navy",size=5)+
+  geom_vline(xintercept = 50,size=0.3,linetype="dashed")+
+
+  #scale_x_continuous(limits = c(0,65),breaks = c(40,50,60))+
+  labs(y="")+
+  ggthemes::theme_fivethirtyeight()+
+  theme(axis.text.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_blank())
+  
+```
+
+
+
+```{r}
+df2 %>%
+  arrange(id)%>%
+  ggplot(aes(x=25,y=fct_reorder(employer_size,id),label=employer_size))+
+  geom_text(hjust=1,fontface="bold",color="#003d59",size=6)+
+  geom_text(aes(x=30,label=paste0(diff_median_hourly_percent,"%")),
+            fontface="bold",size=4,
+            color="#003d59") +
+  # lower
+  geom_segment(size=3.5,
+               aes(x=female_lower_quartile,xend=female_top_quartile,yend=employer_size),
+               position = position_nudge(y = 0.2),
+               color="#a8bd3a",size=0.5)+
+  geom_point(aes(x=female_lower_quartile,y=employer_size),
+             position = position_nudge(y = 0.2),
+             shape=21,stroke=1,fill="violet",
+             color="#a8bd3a",size=5)+
+  geom_point(aes(x=female_top_quartile,y=employer_size),
+             position = position_nudge(y = 0.2),
+             shape=21,stroke=1,fill="violet",
+             color="#a8bd3a",size=5)+
+  # upper
+  geom_segment(size=3.5,
+               aes(x=male_lower_quartile,xend=male_top_quartile,yend=employer_size),
+               position = position_nudge(y = -0.2),
+               color="#a8bd3a",size=0.5)+
+  geom_point(aes(x=male_lower_quartile,y=employer_size),
+             position = position_nudge(y = -0.2),
+             shape=21,stroke=1,fill="navy",
+             color="#a8bd3a",size=5)+
+  geom_point(aes(x=male_top_quartile,y=employer_size),
+             position = position_nudge(y = -0.2),
+             shape=21,stroke=1,fill="navy",
+             color="#a8bd3a",size=5)+
+  # vertical line
+  geom_vline(xintercept = c(40,50,60),size=(c(40,100,40)/100),linetype="dashed",color="grey40")+
+  scale_x_continuous(limits = c(10,65),breaks = c(40,50,60),labels = paste0(c(40,50,60),"K"))+
+  coord_cartesian(clip = "off",ylim = c(1,6))+
+  labs(title="Difference in gender PayGap by size of Employers\n\n",
+       caption="\nDataSource: #TidyTuesday 2022 week26 ons.gov.uk | DataViz: Federica Gazzelloni (@fgazzelloni)")+
+   annotate("text",
+            x= c(18,30,50),
+            y = c(6.8,6.8,6.8),
+           label = c("Employer size", "PayGap", "Gender upper/lower values "),
+           family = "", fontface = 3, size=5,color="#a8bd3a") +
+    ggthemes::theme_fivethirtyeight()+
+  theme(text = element_text(color="#a8bd3a"),
+        plot.title = element_text(size=18),
+        plot.caption = element_text(size=8.5,family="",face=3),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size=12,face="bold"),
+        panel.grid.major.y = element_line(size=14),
+        panel.grid.major.x = element_blank(),
+        plot.background = element_rect(color="#003d59",fill="#003d59"),
+        panel.background = element_rect(color="#003d59",fill="#003d59"))+
+     annotate("text",
+            x= 20.8,
+            y = 0.2,
+           label = "PayGap are median values calculated on unique employer id\nfrom hourly pay(%) mean difference\nPink = Female | Blue = Male",
+           family = "", fontface = 3, size=2.8,color="white") 
+```
+
+```{r}
+ggsave("w26_paygap.png",dpi=320)
+```
+
+
+
+
+
+
