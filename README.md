@@ -39,8 +39,8 @@ Several TidyTuesday interesting examples can be found in the main repository:
 |![17`2022-04-26`](data/2022/w17_hidden_gems/day28_deviations.png)|![18`2022-05-03`](data/2022/w18_solar_wind/w18_solar_wind.png)|![19 `2022-05-10`](data/2022/w19_nyt/w19_nyt.png)|![20 `2022-05-17`](data/2022/w20_eurovision/w20_eurovision.png)|
 |[Week21](data/2022/w21_rugby)<br>[Women's Rugby](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-05-24/readme.md)|[Week22](data/2022/w22_reputation)<br>[Company reputation poll](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-05-31)|[Week23](data/2022/w23_pride)<br>[Pride Corporate Accountability Project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-07)|[Week24](data/2022/w24_drought)<br>[US Drought](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-14)|
 |![21`2022-05-24`](data/2022/w21_rugby/w21_women_rugby.png)|![22`2022-05-31`](data/2022/w22_reputation/w22_reputation.png)|![23`2022-06-07`](data/2022/w23_pride/w23_pride.png)|![24`2022-06-14`](data/2022/w24_drought/w24_drought.png)|
-|[Week25](data/2022/w25_juneteenth)<br>[Juneteenth](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-21)|[Week26](data/2022/w26_)<br>[]()|[Week27](data/2022/w27_)<br>[]()|[Week28](data/2022/w28_)<br>[]()|
-|![25`2022-06-21`](data/2022/w25_juneteenth/w25_juneteenth.png)||![26`2022-06-27`](data/2022/w26_/w26_.png)||![27`2022-07-`](data/2022/w27_/w27_.png)||![28`2022-07-`](data/2022/w28_/w28_.png)|
+|[Week25](data/2022/w25_juneteenth)<br>[Juneteenth](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-21)|[Week26](data/2022/w26_paygap)<br>[UK Gender pay gap](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-06-28)|[Week27](data/2022/w27_)<br>[]()|[Week28](data/2022/w28_)<br>[]()|
+|![25`2022-06-21`](data/2022/w25_juneteenth/w25_juneteenth.png)||![26`2022-06-28`](data/2022/w26_paygap/w26_paygap.png)||![27`2022-07-`](data/2022/w27_/w27_.png)||![28`2022-07-`](data/2022/w28_/w28_.png)|
 
 ***
 ## INFO: How to make a #TidyTuesday
