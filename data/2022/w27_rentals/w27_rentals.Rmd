@@ -1,0 +1,174 @@
+---
+title: "w27 Rentals"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+rent<-readRDS("rent.rds")
+rent
+```
+
+
+```{r}
+max<-rent%>%
+  mutate(city=str_to_title(city))%>%
+  filter(year>2000)%>%
+  group_by(year,city)%>%
+  mutate(avg=median(price))%>%
+  ungroup()%>%
+  count(year,city,avg) %>%
+    arrange(year,-avg) %>%
+  slice_max(order_by=c(avg),n=10) %>%
+  count(city) %>%
+  select(-n) %>%
+  unlist()
+
+max
+```
+
+```{r}
+avg_df<- rent%>%
+  mutate(city=str_to_title(city))%>%
+  filter(year>2000)%>%
+  group_by(year,city)%>%
+  mutate(avg=median(price))%>%
+  ungroup() %>%
+  count(year,city,avg) %>%
+  mutate(pct=round(n/sum(n)*100,2)) %>%
+  arrange(year,-avg)
+```
+
+```{r}
+avg_group<-avg_df%>%
+  filter(!city%in%max) %>%
+  group_by(year)%>%
+  summarise(avg_group=median(avg)) %>%
+  ungroup()
+```
+```{r}
+summary(avg_df$avg)
+```
+
+# text prices
+```{r}
+text_max<-rent%>%
+  mutate(city=str_to_title(city))%>%
+  filter(year>2000)%>%
+  group_by(year,city)%>%
+  mutate(avg=median(price))%>%
+  ungroup()%>%
+  count(year,city,avg) %>%
+    arrange(year,-avg) %>%
+  slice_max(order_by=c(avg),n=5) %>%
+  mutate(avg_comma=formatC(avg, format="d", big.mark=","))%>%
+  mutate(avg_text=paste0("$",avg_comma," ",city))
+
+text_max
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+ main<- avg_df %>%
+    ggplot(aes(x=factor(year),y=avg,group=factor(city),color=city))+
+    geom_line(size=0.2,show.legend = F,color="grey80",alpha=0.2) +
+    geom_line(data= subset(avg_df, city%in%max),
+              inherit.aes = T,key_glyph = "timeseries")+
+    geom_line(data=avg_group,
+            aes(x=factor(year),y=avg_group,group=1),
+              inherit.aes = F,size=1)+
+  geom_text(data= text_max, aes(x=factor(year),y=avg,label=avg_text),
+            inherit.aes = F,family="Roboto Condensed",face="bold",
+            vjust=1,hjust=1)+
+  scale_color_viridis_d()+
+  guides(color=guide_legend(nrow = 2))+
+  scale_x_discrete(expand = c(0,0.09),breaks=seq(2000,2018,2))+
+  scale_y_log10(expand = c(0,0),breaks=5)+
+  labs(title="San Francisco Bay Area Craigslist rental prices",
+       subtitle="top 10 high-rent cities & expected global trend (2001-2018)",
+       caption="DataSource: #TidyTuesday2022 week27 San Francisco Rentals on Craigslist\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       color="City",
+       x="Year",y="Median values - log transf ($525 to $11,140)")+
+    ggdark::dark_theme_classic()+
+  theme(text=element_text(family="Roboto Condensed",color="grey90"),
+        axis.text = element_text(20),
+        legend.position = c(0.75,-0.1),
+        legend.background = element_blank(),
+        legend.text = element_text(size=6),
+        legend.margin = margin(5,5,5,5,"pt"),
+        legend.direction = "horizontal",
+        panel.grid.major.x = element_line(size=0.2),
+        plot.margin = margin(10,10,10,10,"pt"),
+        plot.title = element_text(size=22),
+        plot.caption = element_text(hjust=0),
+        axis.line.y = element_line(size=0.2),
+        axis.line.x = element_line(size=1),
+        axis.ticks = element_line(size=2))
+main
+```
+
+
+```{r}
+library(showtext)
+showtext.auto()
+showtext.opts(dpi=320)
+library(extrafont)
+#loadfonts()
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+insect<-rent%>%
+  group_by(year)%>%
+  summarize(avg=median(price))%>%
+  ungroup()%>%
+  ggplot(aes(x=factor(year),y=avg,group=1))+
+  geom_point()+
+  geom_line()+
+  scale_x_discrete(expand = c(0,0.09),breaks=seq(2000,2018,4))+
+  labs(title="Global SFB rental prices from 2000 to 2018",
+       subtitle="Median values",
+        x="",y="")+
+   ggdark::dark_theme_classic()+
+  theme(text=element_text(family="Roboto Condensed",color="grey90",size = 18),
+        panel.grid.major.x = element_line(size=0.2),
+        axis.text = element_text(size=20),
+        plot.title = element_text(size=25),
+        plot.title.position = "plot",
+        plot.margin = margin(10,10,10,10,"pt"),
+        plot.caption = element_text(hjust=0),
+        axis.line.y = element_line(size=0.2),
+        axis.line.x = element_line(size=1),
+        axis.ticks = element_line(size=2))
+insect
+```
+
+```{r}
+ggsave("insect.png",
+       dpi=300,
+       width = 8,
+       height = 6)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(cowplot)
+
+ggdraw(main)+
+  draw_image("insect.png",scale=0.25,
+             x=-0.35,y=0.25)
+```
+
+
+```{r}
+ggsave("w27_rentals.png",
+       dpi=320,
+       width = 9,
+       height = 6)
+```
+
