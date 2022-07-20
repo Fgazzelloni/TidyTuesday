@@ -1,20 +1,34 @@
 ---
-title: "w28 European flights"
+title: "European flights"
+excerpt: "TidyTuesday 2022 Week 28"
+date: 2022-07-12
 author: "Federica Gazzelloni"
-output: html_document
+draft: false
+images:
+series:
+tags:
+categories: 
+layout: single
 ---
 
+
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,eval=FALSE)
 ```
 
-## European flights
 
-### Load data
+## Overview
+
+### European flights
+
+#### Load data
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 library(tidyverse)
+
 flights <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-07-12/flights.csv')
+
 # saveRDS(flights,"flights.rds")
 # flights<-readRDS("flights.rds")
 ```
@@ -44,7 +58,7 @@ flights%>%
 
 ---
 
-### Waffle
+#### Waffle
 
 Make the first part of the visualization: waffles 
 Selected are 6 countries with a varied number of airports and flights, this is done to give the idea of the differences.
@@ -96,7 +110,7 @@ waffle <- df %>%
 waffle
 ```
 
-### Sankey
+#### Sankey
 
 The purpose of this **sankey** is to show the differences among the selected countries on number of airports and number of flights, from 2016 to 2022.
 
@@ -151,11 +165,11 @@ sankey <- flights %>%
 sankey
 ```
 
-### European Map
+#### European Map
 
 The map has been saved as map.png and sourced in the main visualization. The code can be found in a separate file named "eu_coords.R".
 
-```{r echo=FALSE}
+```{r echo=FALSE,eval=TRUE}
 knitr::include_graphics("map.png")
 ```
 
@@ -202,13 +216,13 @@ combo
 
 Use {ggpubr} for arranging the grid of the main visualization, so it can be annotate with `annotate_figure()` to making it a bit more standing out with spaces around the plot and top and bottmo annotations already at the right distance/position.
 
-```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=T, paged.print=FALSE}
 library(ggpubr)
 ```
 
 `ggpubr::annotate_figure()` provides a framework for annotating the plot on the four sides top, bottom, left and right. It comes a handy function when you'd like to position notes or even rich text at specified positions. To use it, it requires an object from `ggpubr::ggarrange()`.
 
-```{r}
+```{r eval=FALSE, include=T}
 plot <- ggpubr::ggarrange(combo) 
 
   ggpubr::annotate_figure(plot,
@@ -231,7 +245,7 @@ Then finally, save it as .png file with `ggsave()` function. I specified a heigh
 
 The other arguments, `dpi` and `bg` are to set the pixels and the background color.
 
-```{r}
+```{r eval=FALSE, include=T}
 ggsave("waffle_sankey.png",
        dpi=320,
        bg = "grey95",
