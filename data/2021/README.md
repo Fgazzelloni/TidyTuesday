@@ -91,7 +91,7 @@ UN Votes week 13 - Harvard Dataverse	Citizen Statistician
 
 ## Week 33 
 2021-08-10 | [BEA Infrastructure Investment](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-10/readme.md) 
-![png](w33/w33_bea2.png)
+![png](w33_bea_Infrastructure_Investment/w33_bea_Infrastructure_Investment.png)
 
 ## Week 34 
 2021-08-17 | [Star Trek Voice Commands](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-17/readme.md) 
