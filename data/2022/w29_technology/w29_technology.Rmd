@@ -1,0 +1,89 @@
+---
+title: "w29 Technology"
+output: html_document
+---
+
+
+## Cross-country Historical Adoption of Technology (CHAT)
+
+Data contains information on the adoption of over 100 technologies in more than 150 countries since 1800.
+Described is technology usage primarily based on per capita measures and divide technologies into the two broad categories of production and consumption.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(knitr)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, 
+                      comment = "",
+                      echo = TRUE, dpi = 300, cache.lazy = FALSE,
+                      tidy = "styler", fig.width = 8, fig.height = 5)
+```
+
+
+
+```{r}
+# technology <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-07-19/technology.csv')
+
+```
+
+
+```{r}
+# saveRDS(technology,"technology.rds")
+technology <- readRDS("technology.rds")
+
+technology_df<-technology%>%select(-variable,-label)
+
+technology_df %>% count(group)
+```
+
+
+```{r}
+library(ggtext)
+```
+
+
+```{r}
+technology_df %>%
+  filter(group%in%c("Consumption","Production")) %>%
+  filter(iso3c=="ITA") %>%
+  group_by(iso3c,year,group) %>%
+  summarize(Average=round(mean(value)),
+            Median=round(median(value)),.groups="drop")%>%
+  ungroup() %>%
+  pivot_longer(cols = c("Average","Median"),names_to="metric",values_to="values_metrics") %>%
+  filter(values_metrics>0) %>% 
+  ggplot(aes(x=factor(year), y= values_metrics)) +
+  geom_line(size=0.2,color="gray")+
+  geom_line(aes(group=factor(group),
+                color=factor(group)),
+            size=0.8)+
+  geom_point(aes(color=factor(group)),shape=21,stroke=0.6,size=2)+
+  scale_y_log10(labels=scales::comma_format())+
+  scale_x_discrete(breaks=seq(1839,2020,10))+
+  ggthemes::scale_color_fivethirtyeight() +
+  ggthemes::theme_fivethirtyeight() +
+  labs(title="Cross-country Historical Adoption of Technology (CHAT)",
+       subtitle="<span style='color:#0072B2;font-size:14pt'>Production vs Consuption</span><br><br>Data contains information on the adoption of over 100 technologies in more than 150 countries since 1800.<br>Described is technology usage primarily based on per capita measures and divide technologies into the two broad categories<br>of production and consumption. Evidences of average and median values differences explain distribution skewness and outliers.<br>The median is less affected by outliers and skewed data than the mean, and is usually the preferred measure of central tendency<br>when the distribution is not symmetrical.<br>Values are obtained grouping data by country, year and between production and consuption. ",
+       caption="DataSource: #TidyTuesday 2022 week29 | Technology Adoption |	data.nber.org	| www.cgdev.org\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       color="")+
+  facet_wrap(~metric,scales="free_y",nrow = 2) +
+  theme(plot.title = element_text(face = "bold",size=18),
+        plot.title.position = "plot",
+        plot.subtitle = element_markdown(lineheight = 1),
+        axis.line.x = element_line(color="gray",size=1),
+        axis.ticks.x = element_line(size=2))
+```
+
+
+```{r}
+ggsave("w29_technology.png",
+       dpi=320,
+       width = 10,
+       height = 8)
+```
+
+
+
