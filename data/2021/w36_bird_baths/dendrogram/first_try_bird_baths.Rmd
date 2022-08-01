@@ -1,0 +1,736 @@
+---
+title: "w36_bird_baths"
+author: "FG"
+date: "9/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+source: 
+
+- [dendogram](http://www.sthda.com/english/wiki/beautiful-dendrogram-visualizations-in-r-5-must-known-methods-unsupervised-machine-learning)
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 36)
+
+bird_baths <- tuesdata$bird_baths
+```
+
+```{r}
+
+bird_baths <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-31/bird_baths.csv')
+
+DT::datatable(head(bird_baths))
+# dim(bird_baths)
+```
+
+```{r}
+DataExplorer::profile_missing(bird_baths)
+```
+
+
+
+
+```{r}
+bird_baths <- bird_baths %>%
+  drop_na() %>%
+  filter(bird_count>0) #%>% count(bird_type,sort=TRUE)
+
+urban_rural_id <- bird_baths %>% count(urban_rural) %>% 
+  mutate(urb_rul_id = row_number()) %>% select(-n)
+
+bioregions_id <- bird_baths %>% count(bioregions) %>% mutate(bioregions_id = row_number()) %>% select(-n)
+
+bird_type_id <- bird_baths %>% count(bird_type) %>% mutate(bird_type_id = row_number()) %>% select(-n)
+
+
+bird_baths_half_numeric <- bird_baths %>%
+  inner_join(urban_rural_id,
+                            by="urban_rural") %>% 
+  inner_join(bioregions_id,
+                            by="bioregions") %>% 
+  inner_join(bird_type_id,
+                            by="bird_type") %>%
+  #select(-c(urban_rural,bioregions,bird_type))
+  count(survey_year,bird_type,bird_type_id,urb_rul_id,bioregions_id) %>%
+  arrange(survey_year)
+
+
+bird_baths_numeric <- bird_baths %>%
+  inner_join(urban_rural_id,
+                            by="urban_rural") %>% 
+  inner_join(bioregions_id,
+                            by="bioregions") %>% 
+  inner_join(bird_type_id,
+                            by="bird_type") %>%
+  #select(-c(urban_rural,bioregions,bird_type))
+  count(survey_year,bird_type_id,urb_rul_id,bioregions_id) %>%
+  arrange(survey_year)
+                          
+
+# bird_baths_numeric 
+
+dd <- dist(scale(bird_baths_numeric), method = "manhattan")
+hc <- hclust(dd, method = "ward.D2")
+plot(hc)
+```
+
+```{r}
+library("ggdendro")
+#ggdendrogram(hc)
+#ggdendrogram(hc, rotate = TRUE, theme_dendro = FALSE)
+
+```
+
+```{r}
+dend<- as.dendrogram(hc)
+dend_data <- dendro_data(dend, type = "rectangle")
+#View(dend_data)
+```
+
+```{r}
+names(dend_data)
+```
+
+```{r}
+dend_data$leaf_labels <- list(leafs=bird_baths_half_numeric$bird_type)
+
+#View(dend_data)
+names(dend_data)
+```
+
+
+```{r}
+my_leaf_label <- dend_data$labels %>% 
+  merge(dend_data$leaf_labels)
+
+library(extrafont)
+# fonts()
+
+
+
+family <- "Arial Narrow"
+
+p <- ggplot(dend_data$segments) + 
+  geom_segment(data=dend_data$segments,
+  aes(x = x, y = y, xend = xend, yend = yend),color="grey80")+
+  
+  #geom_segment(data=my_seg,aes(x=x,y=y,xend=x,yend=yend-0.1),color="red")+
+  
+ # geom_text(data = my_leaf_label, aes(x, y, label = leafs),hjust = 1, angle = 0, size = 1,family=family)+
+  
+  #ylim(-3, 15) +
+  #coord_polar(theta="y") +
+  #coord_flip() +
+  theme_dendro() +
+  theme(plot.background = element_rect(fill="lightgreen",color="midnightblue",size=2),
+        panel.background = element_rect(fill="steelblue",color="midnightblue",size=2),
+        plot.margin = margin(1,1,1,1,unit = "lines"))
+print(p)
+
+```
+
+source: https://cran.r-project.org/web/packages/dendextend/vignettes/dendextend.html
+
+```{r}
+library(dendextend)
+#dd <- dist(scale(bird_baths_numeric), method = "manhattan")
+#hc <- hclust(dd, method = "ward.D2")
+#dend<- as.dendrogram(hc)
+dend %>% set("nodes_pch", c(19,1,4)) %>% set("nodes_cex", c(2,1,2)) %>% set("nodes_col", c(3,4)) %>% 
+  set("leaves_pch", 19) %>% set("leaves_cex", 2) %>% set("leaves_col", 3)%>%
+  hang.dendrogram %>% # hang the leaves
+   hang.dendrogram(hang = -1) %>%
+  plot(main = "(2) Show (larger)\n nodes")
+```
+
+
+
+```{r}
+dend %>% hang.dendrogram %>%get_leaves_attr("height")%>%
+  plot()
+```
+
+```{r}
+
+```
+
+
+
+
+First Dendrogram with all the bird types seen between 2014 and 2015
+
+```{r}
+bird_baths_type <- bird_baths %>% 
+  group_by(bird_type) %>%
+  summarise(tot_bird_count = sum(bird_count),.groups="drop") 
+
+bird_baths_type <- column_to_rownames(bird_baths_type, var = "bird_type")
+
+
+# Compute distances and hierarchical clustering
+dd <- dist(scale(bird_baths_type), method = "manhattan")
+hc <- hclust(dd, method = "ward.D2")
+plot(hc)
+```
+
+
+```{r}
+library(dendextend)
+class(hc)
+?as.dendrogram
+dend<- as.dendrogram(hc) %>%
+  set("branches_k_color", k=3) %>% set("branches_lwd", 1.2) %>%
+  set("labels_colors") %>% set("labels_cex", c(.9,1.2)) %>%
+  set("leaves_pch", 19) %>% set("leaves_col", c("blue", "red"))
+class(dend)
+
+x<-rownames(bird_baths_type)
+plot(dend,
+     type = c("triangle"), #"rectangle", 
+      center = FALSE,
+      edge.root = TRUE,# edge.root = is.leaf(x) || !is.null(attr(x,"edgetext")),
+      nodePar = list(pch = 2:1, cex = .4*2:1, col = 2:3), #nodePar = list(pch = c(1,NA), cex = 0.8, lab.cex = 0.1), #nodePar = NULL, 
+      edgePar = list(col = 1:2, lty = 2:3),
+      leaflab = c("perpendicular", "textlike", "none"),
+      dLeaf = NULL, # distance of the leafs from the nodes
+      xlab = "", ylab = "", xaxt = "n", yaxt = "s",
+      horiz = TRUE, frame.plot = TRUE)
+
+#str(dend)
+```
+```{r}
+nodePar <- list(lab.cex = 0.6, pch = c(NA, 19), 
+                cex = 0.7, col = "green")
+plot(dend,  
+     xlab = "Birds", 
+     #ylab = "Height",
+     nodePar = nodePar, 
+     horiz = TRUE,
+     edgePar = list(col = 2:3, lwd = 2:1)
+     )
+```
+```{r message=FALSE, warning=FALSE}
+library("ape")
+colors = c("blue", "green", "black","red")
+clus4 = cutree(hc, 5)
+
+
+plot(as.phylo(hc), 
+     type = "radial", #"fan", #type = "phylogram", 
+     show.tip.label = TRUE,
+     edge.color = "red", 
+     edge.width = 0.8, 
+     edge.lty = 1,
+     #tip.color = "black",
+     cex = 0.6, 
+     label.offset = 0.1,
+     no.margin = TRUE,
+     tip.color = colors[clus4])
+```
+
+
+```{r}
+library("ggdendro")
+ggdendrogram(hc)
+ggdendrogram(hc, rotate = TRUE, theme_dendro = FALSE)
+dend<- as.dendrogram(hc)
+dend_data <- dendro_data(dend, type = "rectangle")
+# What contains dend_data
+#names(dend_data)
+#head(dend_data$segments)
+#head(dend_data$labels)
+#View(dend_data)
+```
+
+```{r}
+?ggdendrogram
+ggdendrogram(hc) +
+  coord_polar()
+```
+```{r}
+dend_data$segments%>% #filter(y >= 7) %>% 
+  mutate(y2=if_else(y>=10,7,y),
+         yend2=if_else(yend>=10,7,yend))
+```
+
+
+
+```{r}
+my_seg <- dend_data$labels %>%
+  mutate(xend=x,yend=y)
+
+library(extrafont)
+# fonts()
+
+
+
+family <- "Arial Narrow"
+
+p <- ggplot(dend_data$segments) + 
+  geom_segment(data=dend_data$segments%>%
+  mutate(y=if_else(y>=10,7,y),
+         yend=if_else(yend>=10,7,yend)),
+  aes(x = x, y = y, xend = xend, yend = yend),color="grey80")+
+  
+  geom_segment(data=my_seg,aes(x=x,y=y,xend=x,yend=yend-0.1),color="red")+
+  
+  geom_text(data = dend_data$labels, aes(x, y, label = label),hjust = 1, angle = 0, size = 1,family=family)+
+  #ylim(-3, 15) +
+  coord_polar(theta="y") +
+  #coord_flip() +
+  theme_dendro() +
+  theme(plot.background = element_rect(fill="lightgreen",color="midnightblue",size=2),
+        panel.background = element_rect(fill="steelblue",color="midnightblue",size=2),
+        plot.margin = margin(1,1,1,1,unit = "lines"))
+print(p)
+
+
+```
+
+```{r}
+dend2 <- cut(dend, h = 70)
+plot(dend2$upper)
+plot(dend2$upper, nodePar = list(pch = c(1,7), col = 2:1))
+```
+
+
+```{r}
+plot(dend2$lower[[2]], nodePar = list(col = 4), horiz = TRUE, type = "tr")
+```
+
+
+```{r}
+dend <- bird_baths_type %>%
+  arrange(-tot_bird_count) %>% #summary()
+  filter(tot_bird_count>30) %>%  
+  scale %>%
+  dist %>% 
+  hclust %>% 
+  as.dendrogram
+dend %>% plot
+
+
+library(dendextend)
+dend %>% set("leaves_pch", c(17, 18, 19)) %>%  # node point type
+  set("leaves_cex", 2) %>%  # node point size
+  set("leaves_col", c("blue", "red", "green")) %>% #node point color
+  plot(main = "Leaves points")
+```
+```{r}
+?scale
+bird_scaled <- bird_baths_numeric %>%
+  #select(-bird_type,-bird_count) %>%
+  scale 
+
+bird_baths_mean <- bird_baths_numeric %>% 
+  group_by(bird_type,survey_year) %>%
+  summarise(mean_bird_count=round(mean(bird_count),2))
+
+
+data.frame(bird_scaled) %>% 
+  ggplot() +
+  geom_histogram(aes(survey_year,group=urb_rul_id,fill=urb_rul_id),binwidth=0.1) +
+    #geom_histogram(aes(bird_count,group=urb_rul_id,fill=urb_rul_id),binwidth=0.1) +
+    geom_histogram(aes(urb_rul_id,group=urb_rul_id,fill=urb_rul_id),binwidth=0.1) +
+    geom_histogram(aes(bioregions_id,group=urb_rul_id,fill=urb_rul_id),binwidth=0.1) +
+    geom_histogram(aes(bird_type_id,group=urb_rul_id,fill=urb_rul_id),binwidth=0.03) +
+    scale_fill_viridis_c()+
+  coord_polar()
+
+
+
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+require(graphics)
+
+bird_baths_long <- bird_baths%>%
+  drop_na() %>% 
+  filter(bird_count>0) %>% 
+  mutate(survey_year=as.factor(survey_year)) %>%
+  pivot_longer(cols = survey_year:bioregions,names_to="variables",values_to="values") %>%
+  arrange(values) 
+
+bird_baths_long %>% count(variables)
+bird_baths_long$variables_f = factor(bird_baths_long$variables, levels=c('survey_year','bioregions','urban_rural'))
+  
+ggplot() +
+  geom_bar(data = bird_baths_long,
+                 aes(x=forcats::fct_infreq(values), group=values,fill=values),stat = "count") +
+  #geom_text(data = bird_baths_long %>% count(values,variables_f),aes(x=values,y=n,group=variables_f,label=values),angle=0,hjust=0,size=4)+
+  facet_wrap(vars(variables_f), scales = "free",ncol=2,shrink = FALSE,strip.position = "right") +
+  guides(fill="none") +
+  ggthemes::theme_hc() +
+  theme(plot.margin = margin(2,2,2,2,unit = "lines"),
+        axis.text.y = element_text(size=8),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+  
+
+```
+
+```{r}
+bird_baths_prop <- bird_baths_long %>% 
+  count(bird_type) %>% 
+  mutate(prop=round(n/sum(n)*100,2)) %>% 
+  arrange(-n) %>%
+  mutate(facets = case_when(prop <= 0.0500  ~ "first",
+                            prop > 0.0500 & prop<=0.1600  ~ "second",
+                            prop > 0.1600 & prop<=0.6100  ~ "third",
+                            prop > 0.6100 & prop <=5.2700  ~ "fourth"
+    
+  ))
+  
+
+
+
+  p2 <- ggplot(bird_baths_prop) +
+  geom_col(aes(x=forcats::fct_reorder(bird_type,prop),y=prop, group=bird_type,fill=bird_type),
+           stat = "count") +  
+  geom_text(aes(x=bird_type,y=prop,group=bird_type,label=bird_type),angle=0,hjust=1,size=1.5)+
+  guides(fill="none") +
+    scale_y_log10()+
+  coord_polar() +
+  theme_minimal() +
+  theme(plot.margin = margin(2,2,2,2,unit = "lines"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+  
+  
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+bird_baths_prop <- bird_baths_long %>% 
+  count(bird_type) %>% 
+  mutate(prop=round(n/sum(n)*100,2)) %>% 
+  arrange(-n) %>%
+  mutate(facets = case_when(prop <= 0.0500  ~ "first",
+                            prop > 0.0500 & prop<=0.1600  ~ "second",
+                            prop > 0.1600 & prop<=0.6100  ~ "third",
+                            prop > 0.6100 & prop <=5.2700  ~ "fourth"
+    
+  ))
+  
+
+
+
+  ggplot(bird_baths_prop) +
+  geom_col(aes(x=forcats::fct_reorder(bird_type,prop),y=prop, group=bird_type,fill=bird_type),
+           stat = "count") +  
+  geom_text(aes(x=bird_type,y=prop,group=bird_type,label=bird_type),angle=0,hjust=1,size=1.5)+
+  guides(fill="none") +
+  #scale_y_continuous()+
+  facet_wrap(vars(facets),scales="free")+
+  coord_flip() +
+  theme_minimal() +
+  theme(plot.margin = margin(2,2,2,2,unit = "lines"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+  
+```
+
+
+
+
+```{r}
+
+bird_baths%>%
+  drop_na() %>% 
+  filter(bird_count>0) %>% 
+  count(survey_year,urban_rural,bioregions,bird_type,bird_count,sort=TRUE) %>%
+  ggplot()+
+  geom_col(aes(x=fct_reorder(bird_type,n),y=n,fill=bird_type)) +
+  geom_text(aes(x=bird_type,y=n,label=n),hjust=-0.5,size=2) +
+  guides(fill="none") +
+  coord_flip() +
+  facet_wrap(survey_year~urban_rural+bioregions,scales="free",shrink = FALSE,strip.position = "right",as.table=TRUE)+
+  theme(text = element_text(family=family),
+    axis.text.x = element_text(angle=0,hjust=0,size=8),
+    axis.text.y = element_text(angle=0,hjust=1,size=4)
+  )
+```
+
+```{r}
+bird_baths%>%
+  drop_na() %>% 
+  filter(bird_count>0) %>% 
+  count(survey_year,urban_rural,bioregions,bird_type,sort=TRUE) %>%
+  mutate(bird_count_prop = round(n/sum(n)*100,2)) %>%
+  ggplot()+
+  geom_col(aes(x=fct_reorder(bird_type,bird_count_prop),y=log10(bird_count_prop),fill=bird_type)) +
+  #geom_text(aes(x=bird_type,y=bird_count_prop,label=bird_count_prop),hjust=-0.5,size=2) +
+  guides(fill="none") +
+  coord_polar() +
+  facet_wrap(survey_year~urban_rural+bioregions,shrink = FALSE,strip.position = "right",as.table=TRUE)+
+  theme_void()+
+  theme(text = element_text(family=family),
+    axis.text.x = element_blank(),
+    #axis.text.x = element_text(angle=0,hjust=0,size=8),
+    axis.text.y = element_text(angle=0,hjust=1,size=4)
+  )
+```
+
+
+```{r}
+library("ape")
+plot(as.phylo(hc), type = "unrooted", cex = 0.8,font = 1, label.offset = 2,
+     no.margin = TRUE, edge.color = "black", edge.width = 1, edge.lty = 1,direction = "leftwards",rotate.tree = 1, open.angle = 5)
+```
+
+
+```{r}
+plot(as.phylo(hc), type = "cladogram", cex = 0.6, 
+     label.offset = 0.5)
+
+plot(as.phylo(hc), type = "radial")
+
+plot(as.phylo(hc), type = "fan")
+
+plot(as.phylo(hc), type = "cladogram", cex = 0.6,
+     edge.color = "steelblue", edge.width = 2, edge.lty = 2,
+     tip.color = "steelblue")
+```
+
+
+```{r}
+hcd <- as.dendrogram(hc)
+plot(hcd, type = "rectangle", ylab = "Height")
+nodePar <- list(lab.cex = 0.6, pch = c(NA, 19), 
+                cex = 0.7, col = "blue")
+# Customized plot; remove labels
+plot(hcd, ylab = "Height", nodePar = nodePar, leaflab = "none")
+
+
+plot(hcd,  xlab = "Height", nodePar = nodePar, 
+     edgePar = list(col = 2:3, lwd = 2:1))
+```
+
+```{r}
+plot(hcd,  xlab = "Height",
+     nodePar = nodePar, horiz = TRUE)
+```
+
+```{r}
+plot(hcd,  xlab = "Height", nodePar = nodePar, 
+     edgePar = list(col = 2:3, lwd = 2:1))
+```
+
+
+```{r}
+dend %>% set("labels_col", value = c("green", "blue"), k=2) %>% 
+          plot(main = "Color labels \nper cluster")
+abline(h = 2, lty = 2)
+```
+
+```{r}
+dend %>% set("nodes_pch", 19) %>%  # node point type
+  set("nodes_cex", 2) %>%  # node point size
+  set("nodes_col", "blue") %>% # node point color
+  plot(main = "Node points")
+```
+
+
+```{r}
+# Vertical plot
+dend %>% set("branches_k_color", k = 3) %>% plot
+dend %>% rect.dendrogram(k=3, border = 8, lty = 5, lwd = 2)
+# Horizontal plot
+dend %>% set("branches_k_color", k = 3) %>% plot(horiz = TRUE)
+dend %>% rect.dendrogram(k = 3, horiz = TRUE, border = 8, lty = 5, lwd = 2)
+```
+
+
+```{r}
+grp <- c(1,1,1, 2,2)
+k_3 <- cutree(dend,k = 3, order_clusters_as_data = FALSE) 
+# The FALSE above makes sure we get the clusters in the order of the
+# dendrogram, and not in that of the original data. It is like:
+# cutree(dend, k = 3)[order.dendrogram(dend)]
+the_bars <- cbind(grp, k_3)
+dend %>% set("labels", "") %>% plot
+colored_bars(colors = the_bars, dend = dend)
+```
+
+
+```{r}
+library(dendextend)
+ggd1 <- as.ggdend(dend)
+ggplot(ggd1)
+
+
+ggplot(ggd1, labels = FALSE) + 
+  scale_y_reverse(expand = c(0.2, 0)) +
+  coord_polar(theta="y")
+```
+
+
+## correlation
+
+```{r}
+df <- bird_baths_numeric %>% select(-bird_type)
+library(pvclust)
+ # 916 genes for 73 subjects
+set.seed(1234)
+result <- pvclust(df, method.dist="cor", 
+                  method.hclust="average", nboot=10)
+```
+
+
+
+
+
+```{r}
+plot(result)
+pvrect(result)
+```
+
+
+#---------------------
+
+## modeling
+
+
+```{r}
+library(modelr)
+fit <- lm(bird_count ~ urb_rul_id*bioregions_id , data = df)
+pred <- predict(fit)
+
+fit2 <- lm(bird_count ~ survey_year*bird_type_id , data = df)
+pred2 <- predict(fit2)
+
+
+#plot(fit)
+
+df %>%
+  add_predictions(model = fit) %>%
+  add_residuals(model=fit) %>%
+  ggplot() +
+  geom_freqpoly(aes(resid),binwidth = 0.1) +
+  coord_cartesian()
+  
+```
+
+```{r}
+df %>%
+  add_predictions(model = fit2) %>%
+  add_residuals(model=fit2) %>%
+  ggplot() +
+  geom_histogram(aes(pred),binwidth = 0.001) +
+  geom_freqpoly(aes(pred),binwidth = 0.001) +
+  coord_cartesian()
+```
+
+
+```{r}
+df %>%
+  add_predictions(model = fit) %>%
+  add_residuals(model=fit) %>%
+  filter(!resid<0 )%>%#filter(resid<0.9656)
+  ggplot() +
+  geom_freqpoly(aes(resid),bins = 30) +
+  coord_cartesian(xlim = c(0.95,0.956))
+```
+
+
+```{r}
+df %>%
+  add_predictions(model = fit) %>%
+  add_residuals(model=fit) %>%
+  filter(!resid<0 )%>%#filter(resid<0.9656)
+  ggplot() +
+  geom_freqpoly(aes(log10(pred)),bins = 30)
+```
+
+
+```{r}
+df %>% 
+  add_predictions(model = fit) %>%
+  add_residuals(model=fit) %>% #filter(!resid==0.9555)
+  ggplot() +
+  geom_histogram(aes(pred,group=survey_year,fill=survey_year),binwidth = 0.001) +
+  geom_freqpoly(aes(pred,group=survey_year,color=survey_year),binwidth = 0.001) +
+  scale_color_viridis_c() +
+  scale_fill_distiller() +
+  theme_classic()
+```
+
+
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+
+df <-  df%>% drop_na()
+set.seed(123)
+split <- initial_split(df,strata = bird_count )
+training <- training(split)
+testing <- testing(split)
+```
+
+
+
+```{r}
+set.seed(345)
+rec <- recipe(bird_count ~ . ,data = training) %>%
+  step_pca(all_numeric_predictors(),num_comp = 3)
+  
+
+prep <- prep(rec)
+#tidy(prep)
+
+
+bake <- bake(prep,new_data = testing)
+```
+
+
+```{r}
+#bake%>%count(PC2)
+#bake%>% summary(PC1)
+
+
+
+ggplot(bake) +
+  geom_col(aes(-round(PC1),PC2,group=PC2,color=PC2)) +
+  scale_color_viridis_c()+
+  scale_y_log10() +
+  theme_classic()
+
+
+```
+
+
+
+```{r}
+bake %>% mutate(PC1=round(-PC1)) %>% 
+ggplot() +
+  geom_density(aes(PC2,group=PC1,color=factor(PC1))) +
+  scale_y_log10()
+```
+
+
+```{r}
+bird_baths%>%
+  group_by(bird_type)%>%summarize(tot_bird=sum(bird_count),.groups=NULL)%>%
+  ggplot() +
+  geom_col(aes(fct_reorder(bird_type,tot_bird),tot_bird))
+```
+

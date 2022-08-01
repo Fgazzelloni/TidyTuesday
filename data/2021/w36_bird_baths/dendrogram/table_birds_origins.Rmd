@@ -1,0 +1,62 @@
+---
+  title: "w36_bird_baths"
+author: "FG"
+date: "9/1/2021"
+output: html_document
+---
+  
+  ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+source: 
+  
+  - [dendogram](http://www.sthda.com/english/wiki/beautiful-dendrogram-visualizations-in-r-5-must-known-methods-unsupervised-machine-learning)
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+#tuesdata <- tidytuesdayR::tt_load(2021, week = 36)
+
+bird_baths <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-31/bird_baths.csv')
+
+#bird_baths <- tuesdata$bird_baths
+```
+
+Inspired by: https://github.com/Giovanerd/Tidy_tuesday/blob/main/week_36_2021/Bird_Bath_Plot.R
+
+```{r}
+taxonomyfile<-read.csv(here::here("w36/BLIOCPhyloMasterTax.csv"))
+# View(taxonomyfile)
+```
+
+
+
+```{r}
+bird_type <- bird_baths$bird_type
+taxonomyfile%>% filter(English %in%bird_type) %>% count(English,Hackett_FineClades)
+```
+
+
+
+
+```{r}
+Missing<-tibble(Species=unique(bird_baths$bird_type)[-which(unique(bird_baths$bird_type) %in%taxonomyfile$English)],
+                NewName=c("Chestnut-breasted Munia","Wild Duck","Willie-wagtail","Grey Teal","Red-backed Fairywren",
+                          "Variegated Fairywren","Red-tailed Black-cockatoo","Asian Dollarbird",
+                          "Black-faced Cuckooshrike","Australian Sacred Ibis","Dusky Myzomela","Australian Wood Duck",
+                          "Eurasian Blackbird","Chestnut Teal","Splendid Fairywren","Superb Fairywren","Little Wattlebird",
+                          "Ringneck Parrot","Rock Pigeon","Jacky-winter","Crimson Rosella","Scarlet Myzomela"))
+```
+
+```{r}
+
+```
+
+
+
+
