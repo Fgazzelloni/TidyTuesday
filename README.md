@@ -24,7 +24,7 @@ Several TidyTuesday interesting examples can be found in the main repository:
 
 ***
 # My #TidyTuesdays
-## [2021](data/2021) | [2022](data/2022)
+## [2021](data/2021/gather/table_collage_2021.png) | [2022](data/2022)
 
 |[Week1<br>Bring your own data to start 2022](data/2022/w1_your_own_data/)| [Week2](data/2022/w2_bees)<br>[Bee Colony losses](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-11/readme.md)| [Week3](data/2022/w3_chocolate)<br>[Chocolate Bar ratings](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-18/readme.md)| [Week4](data/2022/w4_board_games)<br>[Board games](https://github.com/rfordatascience/tidytuesday/blob/master/data/2022/2022-01-25/readme.md)|
 | :---: | :---: | :---: | :---: 
