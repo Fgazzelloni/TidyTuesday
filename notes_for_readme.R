@@ -132,5 +132,11 @@ tb_images <- matrix(all_images2$full,ncol=4,byrow = TRUE)%>%
     # https://stackoverflow.com/questions/30054765/how-to-get-r-to-read-in-files-from-multiple-subdirectories-under-one-large-direc
     dat.files  <- list.files(path="data/2021",
                              recursive=T,
-                             pattern="*.png",
+                             pattern="^w.*png$",
                              full.names=T)
+    dat.files
+    
+    
+    # resources:
+    # - https://www.r-bloggers.com/2021/05/working-with-files-and-folders-in-r-ultimate-guide/
+    # regex: https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/regex
