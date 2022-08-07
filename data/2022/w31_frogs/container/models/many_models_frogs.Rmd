@@ -1,0 +1,466 @@
+---
+title: "Frogs: Many models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(baguette)
+library(rules)
+
+library(tune)
+library(finetune)
+```
+
+
+```{r data, message=FALSE, warning=FALSE, paged.print=FALSE}
+frogs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-02/frogs.csv')
+```
+
+```{r wrangling}
+frogs1 <- frogs %>%
+  janitor::clean_names() %>%
+  mutate(survey_date=as.Date(survey_date,"%m/%d/%Y"),
+         female=as.factor(female))%>%
+  arrange(ordinal) %>%
+  select(-site) %>%
+  mutate(subsite=case_when(subsite=="W Res"~"West Reservoir",
+                           subsite=="SE Pond"~"South East Pond",
+                           subsite=="NE Res"~"North East Reservoir",
+                           subsite=="N Res"~"North Reservoir",
+                           TRUE ~ subsite)) 
+```
+
+
+```{r split}
+set.seed(123)
+split <- initial_split(frogs1, strata = female, prop = 0.9)
+training <- training(split)
+test <- testing(split)
+```
+
+
+## Many Models
+
+Here there is a list of different models that would be suitable for **Oregon frogs** data.
+The choise of a model starts from the type of outcome, in this case we want to predict how likely is to spot a female frog. So, the outcome in this case is binary (0,1), the reference variable is female (0) and the other is male frog.
+
+An initial exploration of the data shows a class imbalance between female and male species of rana pretiosa, as being spotted in Oregon.
+
+1.  logistic regression (type classification)
+2.  random forest 
+3.  knn
+
+
+```{r models}
+logistic_reg_glm_spec <-
+  logistic_reg() %>%
+  set_engine('glm') %>%
+  set_mode('classification')
+
+nearest_neighbor_kknn_spec <-
+  nearest_neighbor(neighbors = tune(), weight_func = tune(), dist_power = tune()) %>%
+  set_engine('kknn') %>%
+  set_mode('classification')
+
+rand_forest_ranger_spec <-
+  rand_forest(mtry = tune(), min_n = tune(),trees = tune()) %>%
+  set_engine('ranger') %>%
+  set_mode('classification')
+```
+
+
+Recipes
+
+> "...controversial, approach would be to downsample the data so that the model is provided with all of the events and a random 10% of the nonevent samples". tmwr(8.5)
+
+```{r recipes}
+library(themis)
+
+recipe <- recipe(female ~ . ,training) %>% 
+    step_downsample(female) 
+
+# step_downsample has been used so training_juiced is needed for resampling
+training_juiced <- recipe %>%
+  prep() %>%
+  juice()
+
+
+recipe_normalized <- recipe %>%
+    step_date(survey_date,keep_original_cols = FALSE) %>% 
+    step_corr(all_numeric(),threshold = 0.8) %>%
+    step_dummy(all_nominal(), -all_outcomes()) %>%
+    step_zv(all_numeric()) %>%
+    step_normalize(all_numeric()) 
+
+recipe_pca <- recipe_normalized %>%
+    step_pca(all_predictors(), num_comp = 5) 
+
+recipe_interact <- recipe_normalized %>%
+    step_interact( ~ frequency : starts_with("hab_type_")) 
+    
+recipe_spline <- recipe_interact %>%
+    step_ns(utme_83, deg_free = 15) # to be tuned
+    
+recipe_spline2 <- recipe(female ~ . ,training) %>% 
+   # step_downsample(female) %>%
+    step_date(survey_date,keep_original_cols = FALSE) %>% 
+    step_corr(all_numeric()) %>%
+    step_dummy(all_nominal(), -all_outcomes()) %>%
+    step_zv(all_numeric()) %>%
+    step_normalize(all_numeric()) %>%
+    step_interact( ~ frequency : starts_with("hab_type_")) %>%
+    step_ns(utme_83, deg_free = 15)   #  to be tuned
+```
+
+
+Let's tuning the splines:
+```{r recipe_tune}
+recipe_spline_tuned <- recipe_interact %>%
+    step_ns(utme_83, deg_free = tune("utme_83")) %>%
+    step_ns(utmn_83, deg_free = tune("utmn_83")) 
+
+
+recipes_param <- extract_parameter_set_dials(recipe_spline_tuned)
+
+neural_net_spec <- 
+  mlp(hidden_units = tune()) %>% 
+  set_engine("keras")
+
+wflow_param <- 
+  workflow() %>% 
+  add_recipe(recipe_spline_tuned) %>% 
+  add_model(neural_net_spec) %>% 
+  extract_parameter_set_dials()
+wflow_param
+wflow_param %>% extract_parameter_dials("hidden_units");
+wflow_param %>% extract_parameter_dials("utme_83");
+wflow_param %>% extract_parameter_dials("utmn_83")
+```
+
+```{r resampling}
+set.seed(456)
+#cv_folds <- vfold_cv(training,strata = female,v = 10,repeats = 5)
+cv_folds2 <- vfold_cv(training_juiced,strata = female,v = 10,repeats = 5)
+```
+
+
+## Workflow set
+```{r workflowset}
+recipes <- 
+  list(basic = recipe, 
+       normalized = recipe_normalized,
+       pca = recipe_pca,
+       interact = recipe_interact, 
+       splines = recipe_spline,
+       splines2 = recipe_spline2
+       )
+
+models <- 
+  list(logistic = logistic_reg_glm_spec,
+       #mlp = neural_net_spec,
+       knn = nearest_neighbor_kknn_spec,
+       rf = rand_forest_ranger_spec
+       )
+
+many_models_wkf <- workflow_set(preproc = recipes,
+                            models = models, 
+                            cross = T)
+```
+
+
+Parallel processing
+```{r parallel_proc}
+doParallel::registerDoParallel()
+```
+
+Tuning all together
+```{r tuning}
+# instead of control_resamples we use control_grid for tuning
+# keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+grid_ctrl <- control_grid(save_pred = TRUE,
+                          parallel_over = "everything",
+                          save_workflow = TRUE)
+# 
+# full_results_time <- 
+#   system.time(
+#     grid_results <- 
+#       many_models_wkf %>%
+#       workflow_map(seed = 1503,
+#                resamples = cv_folds2,
+#                grid = 25,
+#                control = grid_ctrl,
+#                verbose = TRUE)
+#   )
+
+# saveRDS(grid_results,"grid_results.rds")
+grid_results <- readRDS("grid_results.rds")
+```
+
+
+
+```{r num_grid_models}
+num_grid_models <- nrow(collect_metrics(grid_results, summarize = FALSE))
+num_grid_models
+```
+
+
+
+```{r roc-curve}
+roc <- grid_results%>%
+  unnest(result)%>%
+  unnest(.predictions) %>%
+  select(wflow_id,.pred_0,.pred_1,.pred_class,female)%>%
+  group_by(wflow_id) %>%
+  roc_curve(female, .pred_0) 
+
+roc_curves <- roc %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity,group=wflow_id )) +
+  geom_line(size = 0.5,color="gray") +
+  geom_line(data=roc%>%
+              filter(str_detect(wflow_id,"rf")),
+            aes(color = wflow_id),
+            inherit.aes = T,
+            size = 0.5) +
+  geom_abline(
+    lty = 2, alpha = 0.5,
+    color = "gray50",
+    size = 0.8
+  ) +
+  labs(title="Is female or male?",
+       subtitle="Among many models Random Forest with interaction terms or with splines are the best\nidentifying the next Rana Pretiosa by gender.",
+       color="Models",
+       caption = "Models id identify the type of model with used recipe.\nRandom Forest models are colored, other models used are KNN and Logistic Regression.")+
+  ggthemes::theme_fivethirtyeight()+
+  theme(text=element_text(family="Roboto Condensed"),
+        plot.background = element_rect(color="white",fill="white"),
+        panel.background = element_rect(color="white",fill="white"),
+        legend.background = element_rect(color="grey95",fill="grey95"),
+        legend.box.background = element_blank(),
+        legend.position = "none")
+
+
+roc_curves
+```
+
+```{r save-ranking-many-models}
+# ggsave("manymodels.png",dpi=320)
+```
+
+
+Rank results:
+```{r rank_results}
+grid_results %>% 
+  rank_results() %>% 
+  filter(rank==1) 
+```
+
+
+```{r autoplot-sd}
+autoplot(
+   grid_results,
+   rank_metric = "roc_auc",  # <- how to order models
+   metric = "roc_auc",       # <- which metric to visualize
+   select_best = TRUE     # <- one point per workflow
+) +
+   geom_text(aes(y = mean-0.15, label = wflow_id), 
+             angle = 90) +
+   lims(y = c(0.39, 1)) +
+   theme(legend.position = "none")
+```
+
+```{r autoplot-grid_results}
+autoplot(grid_results, id = "interact_rf", metric = "roc_auc")
+```
+
+
+```{r best_results}
+best_results <- 
+   grid_results %>% 
+   extract_workflow_set_result("interact_rf") %>% 
+   select_best(metric = "roc_auc")
+best_results
+```
+
+
+
+```{r rf_test_results}
+rf_test_results <- 
+   grid_results %>% 
+   extract_workflow("splines2_rf") %>% 
+   finalize_workflow(best_results) %>% 
+   last_fit(split = split)
+```
+
+
+```{r conf-mat}
+rf_test_results%>%
+  collect_predictions()%>%
+  conf_mat(female,.pred_class) %>%
+  autoplot()
+```
+
+```{r predict}
+final_fitted <- extract_workflow(rf_test_results)
+
+predict(final_fitted, test[1, ], type = "prob")
+```
+
+
+```{r eda-res}
+augment(final_fitted,new_data = test) %>%
+  ggplot(aes(frequency,female)) +
+  geom_point(size=4) +
+  geom_point(aes(frequency,.pred_class),color="red")
+```
+
+
+```{r results-on-test}
+augment(final_fitted,new_data = test)%>%
+  group_by(detection) %>%
+  summarize(female=mean(.pred_0),
+            male=mean(.pred_1))
+```
+
+
+```{r fake_test}
+set.seed(123456)
+fake_test <- test %>%
+    group_by(female) %>%
+    do(sample_n(., 500, replace = TRUE))
+
+augment(final_fitted,new_data = frogs1)%>%
+  group_by(detection) %>%
+  summarize(female=mean(.pred_0),
+            male=mean(.pred_1))
+```
+
+Finally, set the hyperparameters and test the model.
+```{r vip}
+library(vip)
+rf_test_results%>%
+  extract_workflow()%>%
+  extract_fit_parsnip()
+
+
+imp_data <- recipe_interact %>% 
+  prep() %>% 
+  bake(new_data=NULL) 
+
+
+  rand_forest(mtry = 20, 
+              min_n = 53,
+              trees = 1315) %>%
+  set_mode("classification") %>%
+  set_engine('ranger',importance="permutation") %>%
+  fit(female~.,data=imp_data)%>%
+  vip(geom="point")
+```
+
+
+```{r test-with-rpart}
+model <- decision_tree(mode = "classification") %>% 
+  set_engine("rpart") %>%
+  fit(female ~ ., data = training)
+
+roc <- model %>% 
+  predict(new_data = test, type = "prob") %>%
+  bind_cols(test) %>% 
+  roc_curve(female, .pred_1, event_level = "second") 
+
+autoplot(roc)
+```
+
+
+---
+
+## Second part of Many Models: Racing
+
+```{r}
+library(finetune)
+
+race_ctrl <-
+   control_race(
+      save_pred = TRUE,
+      parallel_over = "everything",
+      save_workflow = TRUE
+   )
+
+
+race_results_time <- 
+system.time(
+race_results <-
+    many_models_wkf %>%
+   workflow_map(
+      "tune_race_anova",
+      seed = 1503,
+      resamples = cv_folds2,
+      grid = 25,
+      control = race_ctrl
+   ))
+```
+
+```{r}
+autoplot(
+   race_results,
+   rank_metric = "roc_auc",  
+   metric = "roc_auc",       
+   select_best = TRUE    
+) +
+   geom_text(aes(y = mean - 1/2, label = wflow_id), 
+             angle = 90, hjust = 1) +
+   #lims(y = c(3.0, 9.5)) +
+   theme(legend.position = "none")
+```
+
+```{r}
+matched_results <- 
+   rank_results(race_results, select_best = TRUE) %>% 
+   select(wflow_id, .metric, 
+          race = mean, config_race = .config) %>% 
+   inner_join(
+      rank_results(grid_results, select_best = TRUE) %>% 
+         select(wflow_id, .metric, complete = mean, 
+                config_complete = .config, model),
+      by = c("wflow_id", ".metric")
+   ) %>%  
+   filter(.metric == "roc_auc")
+
+library(ggrepel)
+
+matched_results %>% 
+   ggplot(aes(x = complete, y = race)) + 
+   geom_abline(lty = 3) + 
+   geom_point() + 
+   geom_text_repel(aes(label = model)) +
+   coord_obs_pred() + 
+   labs(x = "Complete Grid ROC AUC", y = "Racing ROC AUC") 
+```
+
+```{r}
+best_results <- 
+   race_results %>% 
+   extract_workflow_set_result("boosting") %>% 
+   select_best(metric = "roc_auc")
+
+best_results
+
+
+boosting_test_results <- 
+   race_results %>% 
+   extract_workflow("boosting") %>% 
+   finalize_workflow(best_results) %>% 
+   last_fit(split = split)
+```
+
+
+```{r}
+collect_metrics(boosting_test_results)
+```
+
