@@ -1,0 +1,90 @@
+---
+title: "Frogs: Logistic Regression model"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(tidymodels)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+frogs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-02/frogs.csv')
+```
+
+```{r}
+frogs1 <- frogs %>%
+  janitor::clean_names() %>%
+  mutate(survey_date=as.Date(survey_date,"%m/%d/%Y"),
+         female=as.factor(female))%>%
+  arrange(ordinal) %>%
+  select(-site)
+```
+
+```{r}
+set.seed(123)
+split <- initial_split(frogs1, strata = female, prop = 0.9)
+training <- training(split)
+test <- testing(split)
+
+cv_folds <- vfold_cv(training,strata = female,v = 10,repeats = 5)
+```
+
+
+```{r}
+log_mod <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+```
+
+
+```{r}
+library(themis)
+recipe <- recipe(female ~ . ,training) %>% 
+    step_downsample(female) %>%
+    step_date(survey_date,keep_original_cols = FALSE) %>% 
+    step_corr(all_numeric(),threshold = 0.8) %>%
+    step_dummy(all_nominal(), -all_outcomes()) %>%
+    step_zv(all_numeric()) %>%
+    step_normalize(all_numeric()) #%>%
+    #step_interact( ~ frequency : starts_with("hab_type_")) %>%
+    #step_ns(utme_83, deg_free = 20) %>%
+    #step_pca(all_predictors(), num_comp = 5) 
+
+log_wkf <- workflow() %>%
+  add_recipe(recipe) %>%
+  add_model(log_mod) %>%
+  fit(training)
+```
+
+```{r}
+final_mod <- last_fit(log_wkf, split)
+```
+
+```{r}
+final_mod %>%
+  augment() %>%
+  conf_mat(truth = female, estimate = .pred_class)
+```
+
+```{r}
+two_class_curve <- final_mod %>%
+  augment() %>%
+  roc_curve(truth = female, estimate = .pred_0)
+
+
+autoplot(two_class_curve)
+```
+
+
+
+
+
+

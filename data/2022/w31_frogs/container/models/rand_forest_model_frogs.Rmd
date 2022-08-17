@@ -1,0 +1,382 @@
+---
+title: "Random Forest model"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+rm(list=ls())
+library(tidyverse)
+library(tidymodels)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+frogs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-02/frogs.csv')
+```
+
+## Preprocessing 
+
+```{r}
+frogs1 <- frogs %>%
+  janitor::clean_names() %>%
+  mutate(survey_date=as.Date(survey_date,"%m/%d/%Y"),
+         female=as.factor(female))%>%
+  arrange(ordinal) %>%
+  select(-site)
+```
+
+```{r}
+set.seed(123)
+split <- initial_split(frogs1, strata = detection, prop = 0.9)
+training <- training(split)
+test <- testing(split)
+
+cv_folds <- vfold_cv(training,strata = detection,v = 10,repeats = 5)
+```
+
+```{r}
+library(themis)
+recipe_interact <- recipe(detection ~ . ,training) %>% 
+    step_downsample(detection) %>%
+    step_date(survey_date,keep_original_cols = FALSE) %>% 
+    step_corr(all_numeric(),threshold = 0.8) %>%
+    step_dummy(all_nominal(), -all_outcomes()) %>%
+    step_zv(all_numeric()) %>%
+    step_normalize(all_numeric()) %>%
+    step_interact( ~ frequency : starts_with("hab_type_")) 
+```
+
+```{r}
+training_juiced <- recipe_interact %>%
+  prep() %>%
+  juice()
+
+set.seed(1111)
+cv_folds_juiced <- vfold_cv(training_juiced,strata = detection,v = 10,repeats = 5)
+```
+
+---
+
+## Simple Random Forest with 1000 trees
+
+Model specification: Random Forest1000
+```{r}
+rand_forest_ranger_spec1000 <-
+  rand_forest(trees = 1000) %>%
+  set_engine('ranger') %>%
+  set_mode('classification')
+```
+
+```{r}
+doParallel::registerDoParallel()
+```
+
+```{r}
+metrics = metric_set(accuracy, roc_auc, sens, spec)
+```
+
+```{r}
+rf_workflow <- workflow() %>%
+  add_recipe(recipe_interact) %>%
+  add_model(rand_forest_ranger_spec1000)  
+  
+rf_fit1000 <- rf_workflow %>%
+  fit_resamples(resamples = cv_folds,
+                metrics = metrics,
+                control = control_resamples(save_pred = TRUE,
+                          parallel_over = "everything",
+                          save_workflow = TRUE)) 
+```
+
+```{r}
+roc <- rf_fit1000 %>%
+  unnest(.predictions) %>% #count(id,id2)
+  select(wflow_id=id,.pred_Captured,`.pred_No visual`,.pred_Visual,.pred_class,detection)%>%
+  group_by(wflow_id) %>%
+  yardstick::roc_curve(detection, .pred_Captured:.pred_Visual) %>%
+  ungroup()
+
+roc %>%
+  #filter(wflow_id=="Repeat1") %>%
+ ggplot(aes(x = 1 - specificity, y = sensitivity, group=.level,color=.level)) +
+  geom_line(size = 0.3) + # ,aes(color=wflow_id),show.legend = F) 
+  geom_abline(lty = 2, alpha = 0.5,
+              color = "gray50",
+              size = 0.8) +
+  ggthemes::scale_color_fivethirtyeight() +
+  labs(x="1-Specificity",y="Sensitivity",
+       color="Detection",
+       title="ROC curves: Detection levels for each fold") +
+  ggthemes::theme_fivethirtyeight()+
+  theme(text=element_text(family="Roboto Condensed"),
+        axis.title = element_text(),
+        plot.background = element_rect(color="white",fill="white"),
+        panel.background = element_rect(color="white",fill="white"),
+        legend.background = element_rect(color="grey95",fill="grey95"),
+        legend.box.background = element_blank())+
+  facet_wrap(~wflow_id)
+```
+
+
+```{r}
+last_rf_fit <- 
+  rf_workflow %>% 
+  last_fit(split)
+```
+
+
+```{r}
+last_rf_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip::vip(num_features = 20)
+```
+
+---
+
+## Random Forest with tuning parameters (grid search)
+
+Model specification: Random Forest
+```{r}
+rand_forest_ranger_spec <-
+  rand_forest(mtry = tune(), 
+              min_n = tune(),
+              trees = tune()) %>%
+  set_engine('ranger') %>%
+  set_mode('classification')
+```
+
+
+### Extract parameters
+```{r}
+rf_params <- workflow() %>%
+  add_recipe(recipe_interact) %>%
+  add_model(rand_forest_ranger_spec) %>%
+  extract_parameter_set_dials() %>%
+  # mtry needs to be finalized--> https://github.com/tidymodels/dials/issues/99
+  update(mtry = finalize(mtry(), training%>%select(-female)))
+rf_params
+```
+
+```{r}
+rf_params %>% extract_parameter_dials("mtry")
+rf_params %>% extract_parameter_dials("trees")
+rf_params %>% extract_parameter_dials("min_n")
+  
+```
+```{r}
+rf_grid <- grid_regular(rf_params,
+                        levels = 5)
+grid_ctrl <- control_grid(save_pred = TRUE,
+                          parallel_over = "everything",
+                          save_workflow = TRUE)
+```
+
+
+######################################################
+######################################################
+```{r}
+# doParallel::registerDoParallel()
+```
+
+```{r}
+# metrics = metric_set(accuracy, roc_auc, sens, spec)
+#  full_results_time <- 
+#    system.time(
+#      grid_results <- 
+#        workflow() %>%
+#        add_recipe(recipe_interact) %>%
+#        add_model(rand_forest_ranger_spec) %>% # fit_resamples(cv_folds) # #%>%collect_metrics()
+#        tune_grid(resamples = cv_folds,
+#                  grid = rf_grid,
+#                  metrics = metrics,
+#                  control = grid_ctrl
+#     )
+#    )
+```
+
+```{r}
+# full_results_time
+#     user   system  elapsed 
+# 6317.042  213.899 3346.848 
+```
+
+
+```{r}
+# saveRDS(grid_results,"rf_results.rds")
+rf_results <- readRDS("rf_results.rds")
+```
+
+
+or
+```{r}
+# set.seed(234)
+# rf_val <- validation_split(training, prop = 0.80)
+# workflow() %>%
+#        add_recipe(recipe_interact) %>%
+#        add_model(rand_forest_ranger_spec) %>% 
+#   fit_resamples(rf_val)
+```
+
+######################################################
+######################################################
+
+```{r}
+rf_results %>% 
+  show_best(metric = "roc_auc")
+```
+
+```{r}
+rf_best <- 
+  rf_results %>% 
+  select_best(metric = "roc_auc")
+rf_best # parameters
+```
+
+```{r}
+roc <- rf_results%>%
+  #unnest(.metrics)%>%
+  unnest(.predictions) %>%
+  select(wflow_id=.config,.pred_0,.pred_1,.pred_class,female)%>%
+  group_by(wflow_id) %>%
+  yardstick::roc_curve(female, .pred_0)
+  
+roc %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity, group=wflow_id )) +
+  geom_line(size = 0.3) + # ,aes(color=wflow_id),show.legend = F) 
+  geom_line(data=roc%>%
+            filter(str_detect(wflow_id,"Preprocessor1_Model009")),
+            color = "purple",
+            inherit.aes = T,
+            size = 0.5) +
+  geom_abline(lty = 2, alpha = 0.5,
+              color = "gray50",
+              size = 0.8) +
+  labs(x="1-Specificity",y="Sensitivity",
+       title="ROC curve for the Best model") +
+  ggthemes::theme_fivethirtyeight()+
+  theme(text=element_text(family="Roboto Condensed"),
+        axis.title = element_text(),
+        plot.background = element_rect(color="white",fill="white"),
+        panel.background = element_rect(color="white",fill="white"),
+        legend.background = element_rect(color="grey95",fill="grey95"),
+        legend.box.background = element_blank(),
+        legend.position = "none")
+```
+
+```{r}
+tidymodels_prefer()
+library(dplyr)
+
+df <-rf_results %>% 
+  collect_metrics()%>%
+  filter(.metric==c("sens","spec"))%>%
+  pivot_wider(names_from = .metric,values_from=mean) %>%
+  select(model=.config,sens,spec)
+
+
+df %>%
+  group_by(model) %>%
+  summarize_all(sum, na.rm = T) %>%
+  ungroup() %>% 
+  ggplot(aes(1-spec,sens))+
+  geom_line()
+```
+
+
+
+
+```{r}
+rf_auc <- 
+  rf_results %>% 
+  collect_predictions(parameters = rf_best) %>% 
+  roc_curve(female, .pred_0) 
+rf_auc
+```
+
+
+```{r}
+rf_auc %>% 
+  ggplot(aes(x = 1 - specificity, y = sensitivity)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() 
+```
+```{r}
+rf_best
+```
+```{r}
+cores <- parallel::detectCores()
+```
+
+
+```{r}
+last_rf_mod <- 
+  rand_forest(mtry = 10, min_n = 2, trees = 500) %>% # rf_best
+  set_engine("ranger", num.threads = cores, importance = "impurity") %>% 
+  set_mode("classification")
+
+```
+
+```{r}
+last_rf_workflow <- 
+  workflow() %>%
+  add_recipe(recipe_interact) %>%
+  add_model(rand_forest_ranger_spec) %>% 
+  update_model(last_rf_mod)
+```
+
+
+---
+
+Last fit on the test set with the best model:
+```{r}
+set.seed(345)
+last_rf_fit <- 
+  last_rf_workflow %>% 
+  last_fit(split)
+
+last_rf_fit
+```
+
+```{r}
+last_rf_fit %>% 
+  collect_metrics()
+```
+
+```{r}
+library(vip)
+last_rf_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = 20,
+      mapping = aes_string(fill = "Variable")) 
+```
+```{r}
+backward<-last_rf_fit %>% 
+  extract_fit_parsnip()
+vi(backward)
+```
+
+
+
+
+```{r}
+last_rf_fit %>% 
+  collect_predictions() %>% 
+  roc_curve(female, .pred_0) %>% 
+  autoplot()
+```
+
+```{r}
+last_rf_fit %>% 
+ collect_predictions()%>%
+  conf_mat(female,.pred_class) %>%
+  autoplot()
+```
+
+---
