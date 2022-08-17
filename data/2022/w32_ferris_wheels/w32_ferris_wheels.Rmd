@@ -1,0 +1,404 @@
+---
+title: "w32_ferris_wheels"
+author: "Federica Gazzelloni"
+date: "8/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE, warning=FALSE, paged.print=FALSE)
+```
+
+Data this #TidyTuesday 2022 week32 is from [EmilHvitfeldt](https://github.com/EmilHvitfeldt/ferriswheels/blob/main/data-raw/wheels.R).
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+wheels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-09/wheels.csv')
+```
+
+This dataset contains information about ferris wheels around the world. The objective of this visualization is to provide a visualization of the differences among ferris wheels in terms of diameter and number of cabins. There is a 48% and 15% missing values in the diameter, and number of cabins vectors, respectively. So, what we need to do is find a way to impute these missing values. There are several techniques used for imputing missing values, such as trees, KNN, SVM, mean/median, linear, and polynomial imputations. We could use {tidymodels} and provided `step_functions()` in order to do that, passing through the use of the `recipe()` function, or workout a custom way to imputation. This is when you look at the data and impute missing values based on the overall meaning. I'll call it *custom sintetic imputation*.
+
+```{r echo=FALSE}
+wheels%>%DataExplorer::profile_missing()%>%
+  filter(feature%in%c("height","diameter","number_of_cabins"))
+```
+
+Before to start tidying our dataset, we exclude the *Nippon* wheel as it is the only one without height and it is still on development, searching on the internet, it is difficult to find information about it, so we exclude it. The, a second ferris wheel which requires some attention is the *Big O*, it has a height which is lower than its diameter, and if you Google it: [Big O](https://www.google.com/search?q=height+big+o+ferris+wheel&rlz=1C5CHFA_enIT984IT984&sxsrf=ALiCzsYPO2d-xLz_ncWVp28RsK6Z1tuHlQ%3A1660635889905&ei=8Ur7YtLcNsO6xc8P7fezoAo&ved=0ahUKEwiSmcbi7sr5AhVDXfEDHe37DKQQ4dUDCA4&uact=5&oq=height+big+o+ferris+wheel&gs_lcp=Cgdnd3Mtd2l6EAM6BwgAEEcQsAM6DQguEMcBEK8BELADEEM6BwgAELADEEM6BwgjELACECc6CAgAEB4QDRATSgQIQRgASgQIRhgAUJkEWIAUYIoaaAFwAXgAgAHcAYgBpAeSAQUwLjYuMZgBAKABAcgBCsABAQ&sclient=gws-wiz) you'll find that both height and diameter are 60 mt (197 feet), so I decided to swap the values, considering the higher value as the height and the other as the diameter.
+
+
+[Moscow-850](https://en.wikipedia.org/wiki/Moscow-850) is expressed in mt so it needs to be in ft, about 240 ft.
+[Chicago Wheel](https://en.wikipedia.org/wiki/Ferris_Wheel_(1893)) is in mt as well, so considering it in ft, it would be 
+
+```{r}
+wheels1 <- wheels%>% 
+  filter(!str_detect(name,"Nippon"))%>% # excluded
+  mutate(location=ifelse(is.na(location),"Dubai",location),
+         diameter=case_when(name=="Moscow-850"~240,
+                            name=="Chicago Wheel"~height,
+                            TRUE~diameter),
+         temp=ifelse(name=="Big O",height,diameter),
+         height=ifelse(name=="Big O",diameter,height),
+         diameter=ifelse(name=="Big O",temp,diameter)) 
+wheels1%>%
+  select(name,country,height,diameter)%>%
+  filter(name%in%c("Big O","Moscow-850","Chicago Wheel"))
+```
+Then, another cleaning step involves the `cost` and `tickets` variables (renamed from `construction_cost` and `ticket_cost_to_ride`), these two vectors are important to be just numeric, because we are going to use them inside a model to predict suitable missing values for the `number of cabins`; in addition, when multiple values are provided for tickets, such as adult and children, we include just the *adults* ticket prices.
+In order to do that, we make some text customization, named regex, text regular expressions with the help of `stringr::str_extract()` function, as shown below. We have some missing values among those two vectors, 55% and 43% for costs and tickets, respectively. Also, these two vector will be imputed to be used in our model.
+
+```{r}
+wheels1%>% 
+  mutate(costs=stringr::str_extract(construction_cost, "\\d+\\.*\\d*"),
+         costs=as.numeric(costs),
+         tickets=stringr::str_extract(ticket_cost_to_ride, "\\d+\\.*\\d*"),
+         tickets=as.numeric(tickets)) %>%
+  filter(!is.na(costs))%>%
+  select(name, country,costs,tickets)%>%head
+```
+As said, we suppose that height is always higher than diameter. A Ferris wheel is generally, lifted on a wheel support and the height is the height of the wheel plus its support. So that, the diameter is just the diameter of the wheel in itself. We do not have missing values on the height vector, the only missing value (Nippon wheel) has been excluded. To replace the missing values in the diameter vector, we have a look at the relationship between diameter versus height. It is about linear. 
+
+```{r echo=FALSE}
+wheels1%>% 
+  ggplot(aes(height,diameter))+
+  geom_point() +
+  geom_smooth(method="lm",size=0.5,se=F) +
+  geom_smooth(size=0.5,se=F,color="gray") +
+  labs(title="Is there a linear relationship between\nDiameter and Height?",
+       caption="The world's average height is 212 ft. The tallest ferris wheel is 550 ft.") +
+  ggthemes::theme_fivethirtyeight()
+```
+More considerations are about the ferris wheel *support* height, the height of the rim steel structure of the ferris wheel, this is given by the difference between the overall height and radius of the ferris wheel. Here is considered just the distance from the end of the wheel and the ground base of the support. We consider the median difference of the height minus the diameter of the all ferris wheel in the dataset, and build a **sintetic_diameter** vector filling missing values with the difference between height and the median difference of 33ft.
+
+```{r eval=FALSE}
+med_bs_hg=median(height-diameter,na.rm = T)
+sintetic_diameter=ifelse(is.na(diameter),height-med_bs_hg,diameter)
+```
+
+```{r echo=FALSE}
+wheels1 %>% 
+  mutate(med_bs_hg=median(height-diameter,na.rm = T),
+         sintetic_diameter=ifelse(is.na(diameter),height-med_bs_hg,diameter)) %>%
+  select(name,height,diameter,med_bs_hg,sintetic_diameter)%>%head
+```
+```{r echo=FALSE}
+plot_df <- wheels1%>%
+  select(-temp)%>%
+  arrange(height)%>%
+  filter(!str_detect(name,"Nippon"))%>% # excluded
+  mutate(med_bs_hg=median(height-diameter,na.rm = T),
+         sintetic_diameter=ifelse(is.na(diameter),height-med_bs_hg,diameter)) 
+
+plot_text <- plot_df %>%
+  mutate(name=ifelse(height>300,name,""))
+
+  plot_df%>%
+ggplot()+
+  geom_segment(aes(x = seq(1,72,1), y = height, 
+                   xend = seq(1,72,1), yend = diameter, 
+                   colour = "Distance from the ferris wheel and its base ground"),
+               size=0.5) +
+  geom_point(aes(x=seq(1,72,1),y=diameter),size=0.5)+
+  geom_line(aes(x=seq(1,72,1),y=height),size=1)+
+  geom_text(data=plot_text,
+            aes(x=seq(1,72,1),y=sintetic_diameter,label=name),
+            check_overlap = T, vjust = "top",hjust="left",nudge_y = 2)+
+  ggthemes::scale_color_canva()+
+  ggthemes::theme_fivethirtyeight()+
+  labs(title="Black line is Height for all ferris wheels in the dataset\nPoints represent all available values for the Diameter\nGray line is the built in Sintetic Diameter",color="",y="Height & Diameter (values are in ft)",
+       x="Ferris wheels id number (ordered by height)")+
+  theme(plot.title = element_text(size=10),
+        axis.title = element_text(size=8))
+```
+
+
+To adopt the median difference is quite superficial, but for now consider that as a base structure for all ferris wheel to start with. 33 ft will be the median distance of the ferris wheels from the ground, in our model.
+
+Then, the *number of cabins* vector contains 15% of missing values, and here these values are covered with some extra manipulations.
+
+Consider some geometry, how to calculate the circumference, the [arc length](https://www.cuemath.com/geometry/arc-length/), or the distance among cabins, and the angles such as *theta*. This apparently a redundant procedure, can lead to reduced bias, as theta is of determined range from 0 to 360 degree or $2\pi$ radiant. The number of cabins can also be of a certain range, as not more than a well specified number of cabins are allowed depending on diameter of the ferris wheel, but this is unknown and potentially be of any unspecified length. For this reason $\theta$ could be a good estimator.
+
+The *number of cabins* are points on a circle, and for those values in the dataset which are not missing, an arc length can be calculated, as long as the central angle $\theta$. Once these values are set, the missing values can be calculated with a backwards procedure.
+
+$$L=\text{Length of an arc}$$
+$$r=\text{Radius}$$
+$$L=\theta\frac{\pi}{180}r$$ 
+A **sintetic number of cabins** (`sintetic_n_cab`) vector is set to be filled with imputed missing values. To find these values, some other parameters are needed. The `sintetic_diameter` vector can be used to find the *circumference*, as well as the *radius*, the arc length among points (the `arc_distance`) and finally $\theta$. All these values are now filled with missing values, as are derived from the *number of cabins vector*.
+
+```{r eval=F}
+circumference = pi*sintetic_diameter
+arc_distance = circumference/number_of_cabins
+theta = (arc_distance*180)/(pi*sintetic_diameter/2)
+sintetic_n_cab = circumference/arc_distance
+```
+
+Final data manipulation below shows how new features are made ready to be used in the model. For further reference [Feature Engineering and Selection](http://www.feat.engineering/engineering-numeric-predictors.html) - Engineering Numeric Predictors, pg.122 is about expanding individual predictors into many predictors.
+```{r}
+my_df <- wheels1%>%
+  select(-temp,-`...1`) %>%
+  mutate(med_bs_hg=median(height-diameter,na.rm = T),
+         sintetic_diameter=ifelse(is.na(diameter),height-med_bs_hg,diameter),
+         #sintetic_height=sintetic_diameter+med_bs_hg,
+         circumference=pi*sintetic_diameter,
+         arc_distance=circumference/number_of_cabins,
+         theta=(arc_distance*180)/(pi*sintetic_diameter/2),
+         sintetic_n_cab=circumference/arc_distance)%>%
+  
+  select(-construction_cost,-ticket_cost_to_ride)%>%
+  arrange(country)
+```
+
+So, we are left with some missing values in the number of cabins. Before going to modeling, some missing values can be filled considering the mean of the arc_distance for the group of heights, this values will be used to fill some of the missing number of cabins for those values with a common height. 
+```{r echo=FALSE}
+my_df1 <- my_df%>%
+  group_by(height)%>%
+  mutate(av_arc_dist=mean(arc_distance,na.rm = T))%>%
+  ungroup()%>%
+  arrange(height)%>%
+  mutate(sintetic_n_cab=ifelse(is.na(sintetic_n_cab),(circumference/av_arc_dist),sintetic_n_cab)) 
+  
+my_df1 %>%
+ # select(name,height,circumference,arc_distance,number_of_cabins,sintetic_n_cab,theta)%>%
+  filter(is.na(sintetic_n_cab))
+```
+
+Looking at the distribution of $\theta$, it is clear a right skewness of the distribution. As said, the angle $\theta$, which is between (0,360), might be a good estimator to use for estimating missing number of cabins, passing through the arch length, the distance among cabins on the wheel.
+```{r}
+my_df1%>%
+  ggplot(aes(theta))+
+  geom_histogram(bins=10,color="white")+
+  ggthemes::theme_fivethirtyeight()+
+  labs(title=expression(paste("Distribution:\t",theta)))
+```
+
+
+A trees based model would be the best choice for guessing these values (ct. [Feature Engineering and Selection](http://www.feat.engineering/engineering-numeric-predictors.html) - Engineering Numeric Predictors, pg.121). 
+
+One more consideration is due to the dimension of the dataset:
+```{r}
+wheels%>%dim
+```
+
+Cross validation could be a solution, as it shuffles data on specified number of folds. In this case the `group_vfold_cv()` function is used to make the cross validation folds grouped by height while predicting theta.
+
+More about how to extrapolate vfold_cv() assessment/analysis datasets here: [article](https://www.tidyverse.org/blog/2022/08/rsample-1-1-0/)
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidymodels)
+tidymodels_prefer()
+
+set.seed(1234)
+folds <- group_vfold_cv(my_df1, group = height,v = 10)
+```
+
+
+```{r}
+rec <- my_df1%>%
+  recipe(theta~circumference+height+sintetic_diameter+sintetic_n_cab) %>%
+  step_corr(all_numeric()) %>% 
+  step_impute_bag(theta,sintetic_n_cab)
+
+rec%>%prep()%>%bake(new_data=NULL)%>%DataExplorer::profile_missing()
+```
+Set a Random forest engine *randomForest* with tuning parameters. **mtry** is for feature subset strategy, in this case just three predictors are used. **min_n** is the min node size, and then there is the number of **trees**. 
+```{r}
+show_engines("rand_forest")
+```
+```{r}
+show_model_info("rand_forest")
+```
+
+```{r}
+rf_spec <-
+  rand_forest(mtry = tune(), 
+              trees = tune(),
+              min_n = tune()) %>%
+  set_engine('randomForest') %>%
+  set_mode('regression')
+
+rf_wfl <- workflow() %>%
+  add_model(rf_spec) %>%
+  add_recipe(rec)
+
+doParallel::registerDoParallel()
+set.seed(123)
+rf_res <- tune_grid(object = rf_wfl,
+                    resamples = folds,
+                    grid = 20,
+                    control = control_grid(save_pred = T,
+                                           save_workflow = T,
+                                           verbose = T,
+                                           parallel_over = "everything"))
+
+rf_res %>% 
+  collect_metrics()%>%
+  filter(.metric=="rmse")%>%
+  arrange(mean)%>%
+  select(mtry,trees,min_n,mean)%>%
+  pivot_longer(cols=mtry:min_n,names_to="parameters",values_to="values")%>%
+  ggplot(aes(values,mean, color=parameters))+
+  geom_point(show.legend = F)+
+  facet_wrap(~parameters,scale="free")
+
+```
+
+```{r}
+
+rf_grid <- grid_regular(
+  trees(range = c(500,1000)),
+  min_n(range = c(0,5)),
+  mtry(range=c(2,2)),
+  levels = 5
+)
+rf_grid
+```
+
+Second tuning with a specified range of parameters.
+```{r}
+set.seed(456)
+rf_res2 <- tune_grid(object = rf_wfl,
+                    resamples = folds,
+                    grid = rf_grid,
+                    control = control_grid(save_pred = T,
+                                           save_workflow = T,
+                                           verbose = T,
+                                           parallel_over = "everything"))
+```
+
+```{r}
+rf_res2 %>%
+  collect_metrics()%>%
+  filter(.metric=="rmse")%>%
+  arrange(mean)%>%
+  select(mtry,trees,min_n,mean) %>%
+  mutate(min_n=as.factor(min_n))%>%
+  ggplot(aes(trees,mean, color=min_n))+
+  geom_line()+
+  geom_point(show.legend = F)
+```
+
+```{r}
+select_best(rf_res2,"rsq")
+```
+```{r}
+my_df2<-my_df1%>%
+  filter(!is.na(theta))
+
+test<- my_df1%>%
+  filter(is.na(theta))
+
+
+pred_theta <- workflow()%>%
+  add_model(rf_spec)%>%
+  add_formula(formula=theta~sintetic_diameter)%>%
+  finalize_workflow(select_best(rf_res2)) %>%
+  fit(data = my_df2) %>%
+  augment(new_data=test) %>%
+  select(sintetic_n_cab,arc_distance,theta,.pred)
+
+pred_theta  
+```
+
+```{r}
+
+  my_df1$theta[is.na(my_df1$theta)]  <-  pred_theta$.pred
+  
+  my_imputed_df <- my_df1%>%
+    mutate(sintetic_distance=ifelse(is.na(arc_distance),
+                                    (theta*pi*sintetic_diameter)/360,arc_distance),
+           sintetic_n_cab=ifelse(is.na(number_of_cabins),
+                                 (circumference/sintetic_distance),sintetic_n_cab))%>%
+    select(name,country,height,sintetic_diameter,diameter,sintetic_n_cab)
+  
+  my_imputed_df%>%head
+```
+
+
+```{r}
+my_imputed_df1 <- my_imputed_df %>%
+  mutate(y = height-sintetic_diameter/2,
+         r = sintetic_diameter / 2) %>%
+  group_by(country) %>%
+  mutate(country_id=1,
+         name=paste0(name,"\n",country),
+         tot_wheels=sum(country_id),.after=country)%>%
+  ungroup() %>%
+  mutate(country=as.character(country)) %>%
+   mutate(name=case_when(name=="Diamond and Flower Ferris Wheel\nJapan"~"Diamond and Flower\nFerris Wheel\nJapan",TRUE~name))
+my_imputed_df1%>%head
+```
+
+This code is from [EmilHvitfeldt](https://github.com/EmilHvitfeldt/ferriswheels/blob/main/data-raw/wheels.R), who has provided the data for this #TidyTuesday 2022 week32.
+```{r}
+ cabin <- my_imputed_df1 %>% 
+    group_by(name) %>% # summarise(number_of_cabins)
+    summarise(cabin = seq_len(sintetic_n_cab),
+              # Get x and y for the carts
+              cabin_x = cos(cabin / sintetic_n_cab * 2 * pi),
+              cabin_y = sin(cabin / sintetic_n_cab * 2 * pi),
+              # Size them to be the right distance from the center
+              cabin_x = cabin_x * (sintetic_diameter / 2),
+              cabin_y = cabin_y * (sintetic_diameter / 2),
+              # Make sure the carts are raised enough
+              cabin_y = cabin_y + height - sintetic_diameter / 2,
+              # Lower the carts just a bit so it appears they are hanging
+              cabin_y = cabin_y - 12.5,
+              cabin_color = as.character(cabin %% 3),
+              sintetic_diameter,sintetic_n_cab,
+              .groups = "drop"
+    )
+```
+
+```{r}
+my_imputed_df1 %>%
+ # filter(str_detect(name,"Flower"))%>%select(name)
+ggplot() +
+    geom_abline(slope = 0, intercept = 0, color = "darkgreen") +
+    ylim(0, NA) +
+    ggforce::geom_circle(aes(x0 = 0, y0 = y, r = r),
+                         color="midnightblue") +
+    # # Left leg
+    geom_segment(aes(x = -(height - sintetic_diameter / 2)/2, 
+                     xend = 0,
+                     yend = height - sintetic_diameter / 2, 
+                     y = 0)) +
+    # right leg
+    geom_segment(aes(x = (height - sintetic_diameter / 2)/2, 
+                     xend = 0,
+                     yend = height - sintetic_diameter / 2, 
+                     y = 0)) +
+    geom_point(data = cabin,
+               mapping=aes(cabin_x, cabin_y, 
+                           color = cabin_color,
+                           fill = cabin_color),
+               size=0.01,
+               shape = 24) +
+    labs(title="Ferris Wheels: overview by dimensions",
+         subtitle = "Diameters and number of cabins are imputed. Ferris wheels are ordered by number of cabins.\nOn average: distance from base ground is 33ft, sintetic diameters and number of cabins are 271ft and 42ft.\n",
+         caption = "Data are from #TidyTuesday 2022 week 32 {ferriswheels} by @Emil_Hvitfeldt\nDataViz: Federica Gazzelloni @fgazzelloni")+
+    theme_void()+
+    theme(text = element_text(family="Roboto Condensed", size=14),
+          plot.title = element_text(size=45),
+          plot.subtitle = element_text(size=20),
+          plot.caption = element_text(size=20,hjust = 0.5,vjust=0.5),
+          plot.background = element_rect(fill="gray80",color="gray80"),
+          panel.background = element_rect(fill="gray80",color="gray80"),
+          legend.position = "none")+
+    facet_wrap(~fct_reorder(name,sintetic_n_cab))
+```
+
+```{r}
+  ggsave("w32_ferriswheels.png",
+         dpi=320,
+         width = 15,
+         height = 18)
+```
+
+Just a little check for some of the ferris wheels with out of the mean overall height.
+```{r}
+my_imputed_df1 %>%filter(str_detect(name,"Roue|HEP"))%>%select(name,diameter,height,sintetic_diameter)
+```
+
+```{r}
+my_imputed_df1%>%select(sintetic_diameter,sintetic_n_cab)%>%map_dfr(mean)
+```
+
