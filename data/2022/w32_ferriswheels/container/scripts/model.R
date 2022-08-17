@@ -62,9 +62,9 @@ rec_costs <- recipe(costs~.,training) %>%
                   seed_val = 1111) %>% 
   step_normalize(all_numeric_predictors()) #%>% 
   #step_pca(all_predictors(),num_comp = 5,threshold = 0.75) %>%
-  prep()%>%juice()
+  #prep()%>%juice()
 
-saveRDS(rec_costs,"rec_costs.rds")
+# saveRDS(rec_costs,"rec_costs.rds")
 ################################################
 
 wkf_costs <- workflow() %>%
@@ -81,22 +81,62 @@ res_costs <- tune_grid(
   # tuning parameters can be manually specified with expand_grid()
   # or a grid number can be specified
   grid = 10,
-  control = control_grid(save_pred = TRUE)
-)
+  control = control_grid(save_pred = TRUE,
+                         save_workflow = TRUE,
+                         verbose = T,
+                         parallel_over = "everything"))
 
-saveRDS(res_costs,"res_costs.rds")
+
+# saveRDS(res_costs,here::here("data/2022/w32_ferriswheels/container/data/res_costs.rds"))
+res_costs <- readRDS(here::here("data/2022/w32_ferriswheels/container/data/res_costs.rds"))
 ################################################
 res_costs%>%select_best("rmse")
+# mtry trees min_n .config              
+# <int> <int> <int> <fct>                
+#   1    19   969     5 Preprocessor1_Model04
+################################################
+my_df1 <- my_df%>%
+  filter(!is.na(costs))
+my_df2 <- my_df%>%
+  filter(is.na(costs))
 
 
-wkf_costs %>%
+last_fit_costs <- wkf_costs %>%
   finalize_workflow(select_best(res_costs)) %>%
-  fit(data = training) %>%
-  augment(new_data=test)
+  last_fit(split)
+  
+ 
+last_fit_costs %>%
+  collect_metrics()
+# .metric .estimator .estimate .config             
+# <chr>   <chr>          <dbl> <fct>               
+#   1 rmse    standard    76.9     Preprocessor1_Model1
+# 2 rsq     standard     0.00978 Preprocessor1_Model1
+
+last_fit_costs %>%
+  collect_predictions()%>%
+  ggplot(aes(costs,.pred))+
+  geom_point()+
+  geom_smooth()
 
 
+#my_df%>%filter(is.na(costs))%>%select(id,costs)%>%arrange(id)
+########  ########  ########  ########  ########  ########
+########  ########  ########  ########  ########  ########
+ data_costs<-  recipe(costs~tickets+open_yr+diameter+height+seating_capacity+number_of_cabins,my_df) %>%
+    step_impute_bag(costs,tickets,open_yr,diameter,
+                    height,seating_capacity,
+                    number_of_cabins,
+                    trees = 100,
+                    seed_val = 1111)%>%
+    prep()%>%
+    juice()
 
+ggplot(data_costs,aes(costs,tickets))+
+  geom_point()+
+  geom_smooth()
+  
 
-  ########  ########  ########  ########  ########  ########
-  ########  ########  ########  ########  ########  ########
+  
+  
   
