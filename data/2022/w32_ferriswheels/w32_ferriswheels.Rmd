@@ -373,7 +373,7 @@ ggplot() +
                size=0.01,
                shape = 24) +
     labs(title="Ferris Wheels: overview by dimensions",
-         subtitle = "Diameters and number of cabins are imputed. Ferris wheels are ordered by number of cabins.\nOn average: distance from base ground is 33ft, sintetic diameters and number of cabins are 271ft and 42ft.\n",
+         subtitle = "Diameters and number of cabins are imputed. Ferris wheels are ordered by number of cabins.\nOn average: distance from base ground is 33ft, sintetic diameters are 271ft and number of cabins are 42.\n",
          caption = "Data are from #TidyTuesday 2022 week 32 {ferriswheels} by @Emil_Hvitfeldt\nDataViz: Federica Gazzelloni @fgazzelloni")+
     theme_void()+
     theme(text = element_text(family="Roboto Condensed", size=14),
