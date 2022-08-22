@@ -1,0 +1,126 @@
+---
+title: "w33 Psychometrics"
+author: "Federica Gazzelloni"
+date: "8/19/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+psych_stats <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-16/psych_stats.csv")
+```
+
+
+```{r}
+psych_stats%>%head
+```
+
+```{r}
+my_df <- psych_stats%>%
+  arrange(rank)%>%
+  select(char_name,uni_name,personality,avg_rating,rank,rating_sd) %>%
+  filter(uni_name=="Friends")
+my_df
+```
+
+Use {tidytext} to select the personality variables to be used in the visualization. In this case a list of encoded variables, such as */U000..* were filtered out, to leave just words in the vector.
+
+```{r}
+library(tidytext)
+my_df1 <- my_df %>% 
+  mutate(personality=gsub("[^A-z]","unknown",personality))%>%
+  filter(!personality=="unknown") %>%
+  #count(personality) %>%
+  unnest_tokens(word, personality) %>%
+  inner_join(get_sentiments("bing")) %>%
+  distinct(char_name,word,sentiment,avg_rating) 
+```
+
+Further wrangling activity on the dataset is done to select only the personality words which are in common and with highest avg rating values for all of the protagonists in **Friends** TV show.
+
+```{r}
+by_names <- my_df1%>%
+  group_by(word)%>%
+  summarize(char_name,avg_rating=mean(avg_rating),.groups="drop")%>%
+  ungroup()%>%
+  pivot_wider(names_from=char_name,values_from=word)%>%
+  drop_na()%>%
+  pivot_longer(cols=2:7,names_to="names",values_to="values")%>%
+  unnest(values)%>%
+  arrange(values) %>%
+  count(values) %>%
+  group_by(values) %>%
+  filter(!n<6 & !n>6) %>%
+  ungroup() %>%
+  left_join(my_df3,by=c("values"="word"))%>%
+  select(-n) %>%
+  pivot_wider(names_from=char_name,values_from=values) %>%
+  pivot_longer(cols=3:8,names_to="names",values_to="word")%>%
+  distinct()%>%
+  drop_na()%>%
+  mutate(word=str_to_title(word)) %>%
+  mutate(id_sentiment=ifelse(sentiment=="positive",1,0))
+```
+
+
+```{r}
+library(extrafont)
+# loadfonts()
+```
+
+
+```{r}
+p <-by_names%>%
+  ggplot(aes(x=avg_rating,y=fct_reorder(word,-avg_rating)))+
+  geom_col(aes(fill=names), position = position_fill(),color="black")+
+  ggthemes::scale_fill_tableau()+
+  guides(fill=guide_legend(nrow = 1,reverse = T,keywidth = 0))+
+  labs(fill="",
+       subtitle="\nordered by common high-rating personality",
+       caption="DataSource: Open Source Psychometrics | #TidyTuesday 2022 week33\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       title="Friends: positive and negative personality ratings")+
+  ggthemes::theme_fivethirtyeight()+
+  theme(text=element_text(color="grey90",family="Public Sans Medium"),
+        plot.title = element_text(size=22),
+        legend.position = "top",
+        legend.background = element_rect(fill="black",color="black"),
+        legend.text = element_text(size=12),
+        strip.background = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size=12),
+        panel.grid = element_line(size=3),
+        plot.background = element_rect(fill="black",color="black"),
+        panel.background = element_rect(fill="black",color="black"))
+```
+
+
+```{r}
+library(cowplot)
+ggdraw(p)+
+  draw_image("logo.png",scale=0.25,
+             x=-0.35,
+             y=0.45)
+ggsave("w33_psychometrics.png",
+       dpi=320,
+       height = 7,
+       width = 9)
+```
+
+Other visualization not to be used.
+
+```{r}
+by_names %>%
+  ggplot(aes(fct_reorder(word,avg_rating),avg_rating,
+             fill=sentiment,color=sentiment))+
+  geom_point()+
+  geom_text(aes(label=word),size=3)+
+  # ggimage::geom_image(x=0.2,y=0.2,image=image)+
+  geom_line(aes(group=sentiment))+
+  #geom_col()+
+  facet_wrap(~fct_reorder(names,-avg_rating),scale="free")+
+  ggthemes::scale_color_tableau()
+```
