@@ -1,15 +1,14 @@
-
 ## This script is to make the lake map plot.
 
 library(tidyverse)
 
 frogs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-02/frogs.csv')
 
+frogs%>%head
+
 # Get the latitude and the longitude from data.
 frogs_coord <- tibble(frogs$UTME_83, frogs$UTMN_83)
 
-
-# Transform the coords into geometry for mapping.
 frogs_coord <- 
   sf::st_as_sf(x = frogs_coord, 
                coords = c(1,2), 
@@ -19,7 +18,6 @@ frogs_coord <-
   tibble()
 
 
-
 frogs_location <- tibble(Detection = frogs$Detection,
                          Subsite = frogs$Subsite,
                          Frequency = frogs$Frequency,
@@ -27,6 +25,7 @@ frogs_location <- tibble(Detection = frogs$Detection,
                          long = unlist(map(frogs_coord$geometry, 1)))
 
 
+# wrangling
 # frogs_captured
 frogs_captured <- frogs_location %>%
   filter(Detection=="Captured")
@@ -39,13 +38,14 @@ frogs_novis <- frogs_location %>%
   group_by(Subsite) %>%
   mutate(range=round(max(Frequency)-min(Frequency),2)*50) %>%
   ungroup()
+
+
 # frog_subsite
 frog_subsite<-frogs_location%>%
   group_by(Subsite)%>%
   summarise(lat=mean(range(lat)),
             long=mean(range(long))) %>%
   ungroup()
-
 
 # Adjust the mean range of the subsite latitude and longitude to set the labels.
 frog_subsite<-frog_subsite %>%
@@ -56,7 +56,8 @@ frog_subsite<-frog_subsite %>%
                         Subsite=="Cow Camp Pond"~-121.782,
                         TRUE~long))
 
-
+##########################################
+##########################################
 
 ## Lake Map
 
@@ -68,15 +69,15 @@ frog_subsite<-frog_subsite %>%
 # - logo credit: https://www.vecteezy.com/free-vector/frog-logo
 
 
-
 frog_logo_captured <- file.path(here::here("data/2022/w31_frogs/container/images/frog_logo_captured.png"))
 frog_logo_visual <- file.path(here::here("data/2022/w31_frogs/container/images/frog_logo_visual.png"))
 
+
 library(leaflet)
 
-lake_map <- leaflet(options = leafletOptions(minZoom = 13.8, 
-                                        maxZoom = 13.8,
-                                        zoomControl=F)) %>% 
+leaflet(options = leafletOptions(minZoom = 13.8, 
+                                 maxZoom = 13.8,
+                                 zoomControl=F)) %>% 
   addTiles() %>%
   fitBounds(-121.824775, 43.764375, -121.764923, 43.814821) %>%
   addCircleMarkers(lng = frogs_novis$long, 
@@ -108,5 +109,29 @@ lake_map <- leaflet(options = leafletOptions(minZoom = 13.8,
                                                     "border-color" = "rgba(0,0,0,0.5)")))%>%
   addMiniMap(zoomLevelOffset = -9,width = 200)
 
-lake_map
-# Then take a shot and save the png to join it with other plots.
+
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
