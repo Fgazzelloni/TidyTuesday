@@ -1,0 +1,277 @@
+---
+title: "Untitled"
+author: "Federica Gazzelloni"
+date: "9/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+pell <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-30/pell.csv')
+```
+
+
+
+```{r}
+head(pell)
+```
+
+
+
+```{r}
+usdata::state_stats%>%names
+```
+
+
+51 abbr
+```{r}
+abbr <- usdata::state_stats%>%
+  count(abbr) %>%
+  select(-n)
+```
+
+
+59 STATES
+```{r}
+pell_abbr <- pell%>%
+  count(abbr=STATE) %>%
+  select(-n)
+```
+
+
+
+```{r}
+missing <- setdiff(pell_abbr,abbr)%>%
+  unlist()
+```
+
+
+```{r}
+year_id <- pell%>%
+  count(YEAR) %>%
+  select(-n)%>%
+  mutate(year_id=seq(1,length(YEAR),1))
+```
+
+
+
+```{r}
+df <- pell%>%
+  arrange(YEAR) %>%
+  filter(STATE%in%missing)%>%
+  arrange(STATE) %>%
+  mutate(NAME=case_when(NAME=="American Samoa Cmnty College"~"American Samoa Community College",
+         TRUE~NAME)) %>%
+  mutate(NAME_long=case_when(STATE=="PR"~"Puerto Rico",
+                             STATE=="AS"~"American Samoa",
+                             STATE=="GU"~"Guam",
+                             STATE=="MH"~"Marshall Islands",
+                             STATE=="PW"~"Palau",
+                             STATE=="VI"~"Virgin Islands",
+                             STATE=="MP"~"Marianas Islands",
+                             STATE=="FM"~"Micronesia",
+                             TRUE~STATE)) %>%
+  count(STATE,NAME_long,AWARD,RECIPIENT,YEAR) %>%
+  group_by(STATE) %>%
+  mutate(n=n(),avg_single_aw=AWARD/RECIPIENT) %>%
+  ungroup() %>%
+  left_join(year_id,by="YEAR")
+
+df
+```
+
+```{r}
+p <- df %>%
+  ggplot(aes(YEAR,avg_single_aw,group=YEAR))+
+  geom_boxplot()
+
+
+p
+plotly::ggplotly(p)
+```
+
+
+
+```{r}
+library(giscoR)
+world <- gisco_get_countries()
+
+
+states <- df %>%
+  count(STATE) %>%
+  select(-n)
+
+
+small_countries <-world%>%
+  filter(CNTR_ID%in%states$STATE)%>%
+  left_join(df,by=c("CNTR_ID"="STATE"))
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(sf)
+
+
+cropped_world<- st_crop(world, 
+        xmin = 120, xmax = 172,
+        ymin = -14, ymax = 40)
+
+
+
+
+
+small_countries_feat <- small_countries %>%
+  st_drop_geometry() %>%
+  #filter(CNTR_ID=="PR")%>%
+  group_by(YEAR,CNTR_ID,NAME_ENGL)%>%
+  summarise(avg_single_aw,
+            mean_val=mean(avg_single_aw),.groups="drop")%>%
+  ungroup() %>%
+  count(YEAR,CNTR_ID,NAME_ENGL,mean_val) %>%
+  group_by(CNTR_ID)%>%
+  mutate(diff=c(0,diff(mean_val)),
+         diff_prop=paste0(round(diff/mean_val*100,2),"%"),
+        # diff_w=round(c(0,diff(mean_val))*1/n,2),
+         avg=round(mean(round(diff/mean_val*100,2)),2))%>%
+  ungroup()
+  
+small_countries_feat  
+```
+
+
+
+
+```{r}
+names <- small_countries%>%
+  count(CNTR_ID,NAME_ENGL,avg_single_aw)
+
+
+subworld <- small_countries %>% 
+  group_by(CNTR_ID) %>%
+  # Mock the data field
+  summarise(data=n())%>%
+  ungroup()%>%
+  mutate(id=seq(1,8,1))
+
+text <- subworld %>% 
+  #select(geometry) %>%
+  st_cast("MULTIPOLYGON") %>%
+ # st_coordinates() %>%
+  st_centroid() %>%
+  st_coordinates() %>%
+  cbind(names) %>%
+  select(-n)
+
+
+text_full <- text %>%
+  left_join(small_countries_feat,by=c("CNTR_ID","NAME_ENGL")) %>%
+  count(X,Y,NAME_ENGL,avg) %>%
+  mutate(text=paste0(NAME_ENGL,"\n",avg,"%\n"))
+
+```
+
+
+
+```{r}
+library(ggforce)
+
+circles <-
+data.frame(
+x0 = text_full$X,
+y0 = text_full$Y,
+r = text_full$avg) #seq(min(text_full$avg), max(text_full$avg), length.out = 8))
+```
+
+
+
+```{r}
+library(extrafont)
+```
+
+
+
+
+```{r}
+ggplot() +
+  geom_sf(data = cropped_world, fill="gray")+
+  geom_sf(data = subworld, aes(color=CNTR_ID)) +
+  geom_text(data = text_full, aes(x=X,y=Y,label=text),family = "Roboto Condensed") +
+  geom_circle(data = circles, aes(x0 = x0, y0 = y0, 
+                                  r = r,
+                                  fill=r,
+                                  alpha=r),
+              color="gray",size=0.2) +
+  scale_fill_gradient(low = "white",high = "blue")+
+  scale_alpha_continuous(range = c(0.1,0.3))+
+  coord_sf(xlim = c(120,171.8428), 
+           ylim = c( -14.36381, 40.59467),
+           crs = 4326) +
+  ggthemes::theme_fivethirtyeight() +
+  theme(text=element_text(family = "Roboto Condensed"),
+        panel.grid = element_line(size=0.08),
+        legend.position = "none")
+```
+
+
+```{r}
+ggsave("map2.png")
+```
+
+
+```{r}
+library(tidyverse)
+library(cowplot)
+ggdraw() +
+  draw_image("map2.png",scale=0.99) +
+  draw_image("globe.png",
+             scale=0.2,
+             x=0.409,y=0.4) +
+  draw_label("Pell Awards",
+             x=0.53,y=0.95,
+             fontfamily = "Roboto Condensed",
+             hjust=0,
+             color="grey30",
+             size=30) +
+    draw_label("Pell Awards",
+             x=0.53,y=0.95,
+             fontfamily = "Roboto Condensed",
+             hjust=0,
+             color="#a5bec9",
+             size=29.5) +
+      draw_label("Basic Educational Opportunity Grants\nby the U.S. Department of Education",
+             x=0.47,y=0.88,
+             fontfamily = "Roboto Condensed",
+             hjust=0,
+             color="#24424f",
+             size=12) +
+        draw_label("Western Pacific Ocean Islands yearly variation+ (average values %) 1990-2017",
+               x=0.03,y=0.06,angle = 90,
+             #x=0.35,y=0.78,
+             fontfamily = "Roboto Condensed",
+             hjust=0,
+             color="#24424f",
+             size=14) +
+  
+    draw_label("DataSource: #TidyTuesday 2022 week35\nU.S. Department of Education",
+             x=0.125,y=0.06,angle = 90,
+             fontfamily = "Roboto Condensed",
+             hjust=0,size=8) +
+      draw_label("DataVisualization: Federica Gazzelloni - @fgazzelloni",
+             x=0.6,y=0.015,angle = 0,
+             fontfamily = "Roboto Condensed",
+             hjust=0,size=9) 
+
+ggsave("w35_pell.png",bg="#b1d2e0") #grey65 Saving 7 x 7 in image
+
+```
+

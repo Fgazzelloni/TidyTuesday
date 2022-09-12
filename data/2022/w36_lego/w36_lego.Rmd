@@ -1,0 +1,92 @@
+---
+title: "Untitled"
+author: "Federica Gazzelloni"
+date: "9/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+inventories <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-06/inventories.csv.gz')
+inventory_sets <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-06/inventory_sets.csv.gz')
+sets <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-06/sets.csv.gz')
+
+all_df <- left_join(inventories, inventory_sets, by = "set_num") %>%
+  left_join(sets, by = "set_num") 
+
+
+all_df %>%
+  ggplot(aes(x = num_parts)) +
+  geom_density() +
+  scale_x_log10()
+```
+
+```{r}
+all_df %>%
+  DataExplorer::profile_missing()
+```
+
+```{r}
+df <- all_df%>%
+  arrange(year) %>%
+  count(num_parts,year,version) %>%
+  mutate(version=as.factor(version)) %>% # year=as.factor(year),
+  group_by(year,version) %>%
+  summarise(pct_parts=sum(num_parts),.groups="drop") %>%
+  ungroup() 
+```
+
+
+
+
+```{r}
+
+ 
+
+
+# library(systemfonts)
+# fonts <- system_fonts()
+# fonts%>%
+#   arrange(family)%>%
+#   filter(family=="Legothick")
+
+
+legofont <- systemfonts::register_font(name="LEGothicType",
+                                       plain="/Library/Fonts/Legothick.ttf")
+
+
+
+df %>%
+  ggplot(aes(year,factor(pct_parts),fill=version,color=version))+
+  geom_bin2d(size=0.5,bins=20,show.legend = F)+ 
+  labs(title="\nLEGO")+
+  theme_void() +
+  theme(text=element_text(family="LEGothicType"),
+        plot.title = element_text(size=40,hjust=0.5),
+        plot.subtitle = element_text(family="Roboto Condensed"),
+        axis.text.x = element_text(color="grey40",vjust=0),
+        #axis.text.y = element_text(color="orange"),
+        legend.position = c(0.5,0.5),
+        legend.direction = "horizontal",
+        legend.text = element_text(family="Roboto Condensed"),
+        legend.title = element_text(family="Roboto Condensed"),
+        plot.margin = margin(5,5,5,5,unit = "pt"),
+        plot.background = element_rect(fill = "red",color = "red")) 
+
+  
+ggsave("w36_lego.png",
+       dpi=320,
+       width = 8,
+       height = 6)
+```
+
+
+
+
