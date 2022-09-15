@@ -13,6 +13,7 @@ frogs_coord <-
   sf::st_as_sf(x = frogs_coord, 
                coords = c(1,2), 
                crs = "+proj=utm +zone=10") %>%
+  #crs = st_crs(4326)
   sf::st_transform(frogs_coord, 
                    crs = "+proj=longlat +datum=WGS84")  %>%
   tibble()

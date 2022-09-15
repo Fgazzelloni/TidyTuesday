@@ -1,0 +1,98 @@
+---
+title: "w37 BigFoot"
+author: "Federica Gazzelloni"
+date: "9/14/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+BigFoot report location and environment conditions
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+bigfoot <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-13/bigfoot.csv')
+```
+
+```{r}
+bigfoot%>%DataExplorer::profile_missing()
+```
+
+```{r}
+bigfoot%>%head
+```
+```{r}
+df <- bigfoot%>%
+  select(county,
+         state,
+         season,
+         latitude,
+         longitude,
+         date,
+         number,
+         classification,
+         temperature_high,
+         temperature_mid,
+         temperature_low,
+         dew_point,
+         humidity,
+         cloud_cover,
+         moon_phase,
+         precip_intensity,
+         precip_probability,
+         precip_type,
+         pressure,
+         uv_index,
+         visibility,
+         wind_bearing,
+         wind_speed) %>%
+  filter(!is.na(latitude)) %>%
+  mutate(precip_type=ifelse(is.na(precip_type),"unknown",precip_type),
+         date=as.Date(date,"%Y-%m-%d")) %>%
+  mutate(year=lubridate::year(date),.after="date") 
+```
+
+
+
+```{r}
+df %>% DataExplorer::profile_missing()
+```
+
+```{r}
+df %>%
+  str
+```
+
+the classification determines the nature of the incident - direct sighting, noises, tracks, etc.[^1]
+
+- Class A: clear sightings
+- Class B: not afford a clear view (observed at a great distance or in poor lighting)
+- Class C: second-hand reports
+
+[^1]: https://www.bfro.net/GDB/classify.asp
+```{r}
+df%>%
+  #count(year,sort=T) %>%
+  filter(year>=1963) %>%
+  ggplot(aes(date))+
+  geom_histogram(color="white")
+```
+```{r}
+df %>%
+  filter(year>=1963) %>%
+  filter(longitude>-130) %>%
+  ggplot(aes(longitude,latitude))+
+  geom_point()
+```
+
+
+
+
+
+
+
+
+
+
