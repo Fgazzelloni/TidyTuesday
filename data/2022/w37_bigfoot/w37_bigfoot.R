@@ -61,7 +61,6 @@ world <- map_data("world") %>%
 library(randomcoloR)
 n <- 48
 palette <- distinctColorPalette(n)
-bigfoot<- data.frame(image="bigfoot.png",x=1,y=1)
 
 set.seed(1)
 p <- ggplot() +
@@ -88,7 +87,6 @@ p <- ggplot() +
             label.size = unit(0.05,"pt"), 
             fill = "grey90"
             )+
-  #ggimage::geom_image(data = bigfoot, mapping= aes(x,y))+
   coord_map() +
   scale_color_manual(values = palette) +
   ggthemes::theme_map() +

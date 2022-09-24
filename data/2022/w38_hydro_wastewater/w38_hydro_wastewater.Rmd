@@ -1,0 +1,145 @@
+---
+title: "#TidyTuesday 2022 week38: Hydro WasteWater"
+author: "Federica Gazzelloni"
+date: "9/22/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,comment = "",warning = FALSE,message = FALSE)
+```
+
+
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+HydroWASTE_v10 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-20/HydroWASTE_v10.csv')
+
+HydroWASTE_v10%>%names
+```
+
+```{r}
+HydroWASTE_v10%>%DataExplorer::profile_missing()
+```
+
+```{r}
+# HydroWASTE_v10%>%View()
+```
+
+
+```{r}
+df <- HydroWASTE_v10%>%
+  janitor::clean_names()%>%
+  count(country,lat_wwtp,lon_wwtp,source,
+        qual_loc,qual_pop,qual_waste,qual_level,qual_cap)
+```
+
+
+
+```{r}
+# source: https://stackoverflow.com/questions/68278789/how-to-rotate-world-map-using-mollweide-projection-with-sf-rnaturalearth-ggplot
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+
+target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=133")
+
+worldrn <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  st_make_valid()
+
+
+# define a long & slim polygon that overlaps the meridian line & set its CRS 
+# Centered in lon 133
+offset <- 180 - 133
+
+# build a polygon
+polygon <- st_polygon(x = list(rbind(
+  c(-0.0001 - offset, 90),
+  c(0 - offset, 90),
+  c(0 - offset, -90),
+  c(-0.0001 - offset, -90),
+  c(-0.0001 - offset, 90)))) %>%
+  st_sfc() %>%
+  st_set_crs(4326)
+
+
+# set the polygons
+world2 <- worldrn %>% 
+  st_difference(polygon) %>% 
+  st_transform(crs = target_crs)
+```
+
+Set the values for hydro waste to the new target crs.
+```{r}
+coords <- df %>% 
+  rename(lat=lat_wwtp,lon=lon_wwtp) %>%
+  sf::st_as_sf(coords = c("lon", "lat"), crs = 4326) %>% 
+  sf::st_transform(crs = target_crs) 
+```
+
+Set the colors.
+```{r}
+library(RColorBrewer)
+my_palette <- RColorBrewer::brewer.pal(12,"Set3")
+
+my_values <- c("1"="#8DD3C7", 
+               "2"="#FFFFB3",
+               "3"="#BEBADA", 
+               "4"="#FB8072",
+               "5"="#80B1D3", 
+               "6"="#FDB462",
+               "7"="#B3DE69",	
+               "8"="#FCCDE5",
+               "9"="#D9D9D9",
+               "10"="#BC80BD",
+               "11"="#CCEBC5", 
+               "12"="#FFED6F")
+
+my_labels<-c("Europe", "United States",
+             "Brazil", "Mexico",
+             "China", "Canada",
+             "Australia",	"South Africa",
+             "India", "New Zealand",
+             "Peru", "Remaining Countries")
+```
+
+
+Make the mollweide, more info on how to set the projections here: https://epsg.io/54009
+```{r cache=TRUE}
+ggplot() + 
+  geom_sf(data = world3, aes(group = admin), 
+          fill = "#f5f5f5") + 
+  geom_sf(data = coords,
+          mapping = aes(color=factor(source)),
+          key_glyph = draw_key_rect,
+          size=0.1) + 
+  scale_color_manual(labels=my_labels,values=my_values)+
+  labs(title="Wastewater Plants",
+       subtitle="Concentrated point sources of residual contaminant loads into surface waters",
+       caption="DataSource: #TidyTuesday 2022 week38 Hydro Wastewater | DataViz: Federica Gazzelloni @fgazzelloni",
+       color="Source of\nwaterwaste")+
+  coord_sf()+
+  ggthemes::theme_map() +
+  theme(plot.title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=12,face="bold"),
+        text=element_text(family="Roboto Condensed",color="#89a5b9"),
+        panel.grid = element_line(color="#bfd0dd"),
+        plot.background = element_rect(fill="#275477",color="#275477"),
+        panel.background = element_rect(fill="#275477",color="#275477"),
+        legend.background = element_blank(),
+        legend.position = c(-0.05,0.05),
+        legend.key = element_rect(size=4))
+```
+
+Save it.
+```{r}
+ggsave("w38_hydro_waterwaste.png",
+       dpi=320,
+       width = 10,
+       height = 5)
+```
+
+
