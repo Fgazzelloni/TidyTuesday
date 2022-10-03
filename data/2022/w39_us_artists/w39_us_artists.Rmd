@@ -1,0 +1,80 @@
+---
+title: "US Artists"
+author: "Federica Gazzelloni"
+date: "10/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+artists <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-09-27/artists.csv')
+# artists%>%View
+```
+
+```{r}
+states <- map_data("state")
+
+my_artists <- artists%>%
+  mutate(region=tolower(state))%>%
+  left_join(states,by=c("region"))
+
+ggplot(states,aes(long,lat,group=group))+
+  geom_polygon(fill="grey80",color="grey40")+
+  geom_point(data=my_artists,aes(color=race))
+  
+```
+
+
+
+## Make a tree map
+
+
+```{r}
+df <- artists%>%
+  group_by(state)%>%
+  summarise(tot=sum(artists_n,na.rm = TRUE))
+
+# Create data
+group <- df$state
+value <- df$tot
+data <- data.frame(group,value)
+```
+
+```{r}
+# install.packages("Polychrome")
+library(Polychrome)
+# https://colorbrewer2.org/#type=sequential&scheme=Greens&n=9
+# build-in color palette
+values <- createPalette(52,  c("#f7fcfd", "#9ebcda", "#f7fcfd"))
+```
+
+
+
+```{r}
+# library
+library(treemap)
+png(filename="w39_us_artists.png",width=1400, height=1700)
+treemap(dtf = data,index = "group",vSize="value",type="index",
+        title = "STATE ARTISTS",
+        border.col = "grey70",
+        border.lwds = 2,
+        title.legend = "US States",
+        fontsize.title=80,
+        fontfamily.labels = "Roboto Condensed",
+        fontfamily.title = "Roboto Condensed",
+        force.print.labels = TRUE,
+        fontface.labels = 2,
+        fontsize.labels = data$value,
+        palette = values
+            )
+dev.off()
+```
+
