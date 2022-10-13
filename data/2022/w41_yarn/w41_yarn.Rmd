@@ -1,0 +1,26 @@
+---
+title: "w41 Yarn"
+author: "Federica Gazzelloni"
+date: "10/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+yarn <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-11/yarn.csv')
+
+yarn%>%head
+```
+
+```{r}
+yarn%>%names
+```
+
+```{r}
+
+```
+

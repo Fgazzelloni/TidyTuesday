@@ -1,0 +1,152 @@
+---
+title: "w40 product_hunt"
+author: "Federica Gazzelloni"
+date: "10/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+product_hunt <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-04/product_hunt.csv')
+
+product_hunt %>% head()
+```
+
+```{r}
+product_hunt %>%
+  mutate(month=zoo::as.yearmon(as.Date(release_date)))%>%  # "%Y-%m-%d"
+  count(month) %>%
+  ggplot(aes(month,n)) +
+  geom_point() 
+  
+```
+
+```{r}
+product_hunt %>%
+  mutate(month=zoo::as.yearmon(as.Date(release_date))) %>%  # "%Y-%m-%d"
+  count(month) %>%
+  ggplot(aes(month,n)) +
+  geom_point() +
+  geom_smooth()
+```
+
+
+```{r}
+product_hunt%>%
+   mutate(month=zoo::as.yearmon(as.Date(release_date)))%>%
+   count(name, month,product_ranking,upvotes) %>%
+   drop_na() %>%
+   arrange(-product_ranking,-upvotes)%>%
+   group_by(product_ranking) %>%
+  count(name)
+   filter(upvotes==max(upvotes))
+  
+
+#column_to_rownames(name)
+
+```
+
+
+```{r}
+df <- product_hunt%>%
+   mutate(month=zoo::as.yearmon(as.Date(release_date)))%>%
+   count(name, month,product_ranking,upvotes) %>%
+   drop_na() %>%
+   arrange(-product_ranking,-upvotes)%>%
+   group_by(product_ranking) %>%
+   filter(upvotes==max(upvotes))
+
+df
+```
+
+
+
+```{r}
+product_hunt%>%
+   #mutate(month=zoo::as.yearmon(as.Date(release_date)))%>%
+  mutate(year=lubridate::year(as.Date(release_date)))%>%
+   count(year,product_ranking,upvotes) %>%
+   drop_na() %>%
+   arrange(-product_ranking,-upvotes) %>%
+  group_by(year,product_ranking)%>%
+  summarise(avg_votes=sum(upvotes)) %>%
+  ungroup() %>%
+  mutate(year=factor(year)) 
+```
+
+
+```{r}
+product_hunt%>%
+   #mutate(month=zoo::as.yearmon(as.Date(release_date)))%>%
+  mutate(year=lubridate::year(as.Date(release_date)))%>%
+   count(year,product_ranking,upvotes) %>%
+   drop_na() %>%
+   arrange(-product_ranking,-upvotes) %>%
+  group_by(year,product_ranking)%>%
+  summarise(avg_votes=sum(upvotes)) %>%
+  ungroup() %>%
+  mutate(year=factor(year)) %>%
+  ggplot(aes(x = product_ranking, y = avg_votes,color=year,fill=year)) +
+  geom_col() 
+```
+
+
+
+
+
+
+
+
+```{r}
+df <- product_hunt %>% 
+  arrange(release_date) %>%
+  select(release_date,upvotes,product_ranking) %>%
+  group_by(release_date,product_ranking) %>%
+  summarise(year = year(release_date),
+            month = month(release_date, label=TRUE),
+            day = day(release_date),
+            tot_votes=scale(upvotes)) %>%
+  ungroup() %>% 
+  select(release_date,day,month,year,tot_votes,product_ranking)%>%
+        fill(tot_votes,product_ranking) %>%
+  distinct() %>%
+  drop_na() 
+
+df
+```
+
+
+
+
+```{r}
+ggplot(df,aes(month,product_ranking,fill=tot_votes))+
+ # geom_hex() +
+  geom_tile(color="grey40",size=0.5) +
+  scale_fill_viridis(name="Votes",option ="E",begin = 0.1,end = 1,direction = -1)+
+  facet_grid(vars(year)) +
+  scale_y_continuous(trans = "reverse", breaks = unique(df$day)) +
+  scale_x_discrete(expand = c(0,0)) +
+  labs(x="Month",y="Product ranking",
+       title="Heatmap of the products upvotes by ranking in time",
+       subtitle="darker areas show a higher number of votes (scaled values)",
+       caption="DataSource: #TidyTuesday week40 Product Hunt | DataViz: Federica Gazzelloni") +
+  theme_minimal(base_size = 9,base_family = "Roboto Condensed")+
+  theme(text=element_text(color="grey90",face="bold"),
+        axis.line = element_blank(),
+        strip.switch.pad.grid = unit(2,units = "pt"),
+        plot.background = element_rect(color="grey60",fill="grey60"),
+        plot.title = element_text(size=18))
+```
+
+```{r eval=FALSE}
+ggsave("w40_product_hunt.png",
+       dpi=600,
+       width = 10,
+       height = 7)
+```
+
+
