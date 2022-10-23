@@ -1,3 +1,8 @@
+#TidyTuesday 2022 week41
+# Author Federica Gazzelloni
+
+
+# load the libraries
 library(tidyverse)
 library(igraph)
 library(ggraph)
@@ -6,12 +11,16 @@ library(showtext)
 library(sysfonts)
 library(extrafont)
 
+
+# set the fonts
 showtext::showtext_auto()
 showtext::showtext_opts(dpi=320)
 font_add_google(name="Pangolin",family="pangolin")
 
-
+# read the data
 yarn <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-11/yarn.csv')
+
+# tidy textures
 df <- yarn%>%
   mutate(texture_clean=case_when(str_detect(texture_clean,"merino")~"merino",
                                  str_detect(texture_clean,"ply|plied|play|plies")~"ply",
@@ -42,7 +51,7 @@ df <- yarn%>%
   select(yarn_weight_name,texture_clean,yardage)
 
 
-#############
+# build the data ready for the graph
 d1<- df%>%
   mutate(from="YARN")%>%
   relocate(from)%>%
@@ -58,24 +67,26 @@ vertices <- data.frame(name = unique(c(as.character(hierarchy$from),
                                        as.character(hierarchy$to))) ) 
 
 
-
-
+# make the graph_from_data_frame
 mygraph <- graph_from_data_frame(hierarchy, vertices=vertices )
 
+# see the elements of the graph
 df1 <- create_layout(mygraph, layout = 'dendrogram')
 
-node_angle(df1$x,df1$y,degrees = T)
 
+# make a function for node angle adj
+# node_angle(df1$x,df1$y,degrees = T)
 node_ang_adj <- function(x,y) {
-  ifelse(node_angle(x,y) > 90 & node_angle(x,y) < 270 , node_angle(x,y) + 180, node_angle(x,y))
- # ifelse(node_angle(x,y) < 270 , node_angle(x,y) + 180, node_angle(x,y))
+  ifelse(node_angle(x,y) > 90 & node_angle(x,y) < 270 , 
+         node_angle(x,y) + 180, node_angle(x,y))
   }
 
+# make a function for hjust
 node_hjust_adj <- function(x,y) {
   ifelse(node_angle(x,y) > 90 & node_angle(x,y) < 270 , 1,0)
 }
 
-
+# make the graph
 ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
   geom_edge_diagonal(aes(color=factor(x)),
                      alpha=0.9,
@@ -115,12 +126,13 @@ ggraph(mygraph, layout = 'dendrogram', circular = TRUE) +
   labs(caption="What's inside your YARN?\ntextures for each type\n\nDataSource: #TidyTuesday 2022 week41 Ravelry data\nDataViz: Federica Gazzelloni (FG) Twitter: @fgazzelloni\n",
        alt="Infographics") +
   theme_graph()+
-  theme(plot.margin = margin(5,5,5,5,unit = "pt"))
+  theme(plot.margin = margin(5,5,5,5,unit = "pt"),
+        plot.caption = element_text(face="bold",family="pangolin"))
 
 
 
-ggsave("test2.png",
-      dpi=280,
-      bg="white",
-      width = 9,height = 9)
+#  ggsave("w41_yarn.png",
+#        dpi=280,
+#        bg="white",
+#        width = 9,height = 9)
 
