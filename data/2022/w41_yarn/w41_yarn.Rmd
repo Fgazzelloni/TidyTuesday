@@ -21,6 +21,212 @@ yarn%>%names
 ```
 
 ```{r}
-
+yarn%>%DataExplorer::profile_missing()
 ```
+
+
+```{r}
+yarn%>%count(yarn_weight_name)
+```
+```{r}
+df <- yarn%>%#count(texture_clean)%>%
+  mutate(texture_clean=case_when(str_detect(texture_clean,"merino")~"merino",
+                                 str_detect(texture_clean,"ply|plied|play|plies")~"ply",
+                                 str_detect(texture_clean,"acrylique|acrylic|polyacryl|acrilyc|acryt")~"acrylic",#TRUE~texture_clean))%>%count(texture_clean)%>%filter(str_detect(texture_clean,"acr|ply"))
+                                 str_detect(texture_clean,"nylon")~"nylon",
+                                 str_detect(texture_clean,"cotton")~"cotton",
+                                 str_detect(texture_clean,"wool")~"wool",
+                                 str_detect(texture_clean,"polyamide|polyamid")~"polyamid",
+                                 str_detect(texture_clean,"angora")~"angora",
+                                 str_detect(texture_clean,"cashmere")~"cashmere",
+                                 str_detect(texture_clean,"aran")~"aran",
+                                 str_detect(texture_clean,"silk")~"silk",
+                                 str_detect(texture_clean,"jersey")~"jersey",
+                                 TRUE~texture_clean))%>%#count(texture_clean)
+  filter(str_detect(texture_clean,
+                    c("merino|ply|acrylic|nylon|cotton|wool|angora|cashmere|aran|silk|jersey")))%>%
+  count(texture_clean,yarn_weight_name,yardage,grams) %>%
+  mutate(yarn_weight_name=case_when(yarn_weight_name=="Aran / Worsted"~"Aran",
+                                    yarn_weight_name=="DK / Sport"~"DK",
+                                    yarn_weight_name=="Light Fingering"~"Fingering",
+                                    yarn_weight_name=="Super Bulky"~"Bulky",
+                                    TRUE~yarn_weight_name))%>%
+  filter(!yarn_weight_name=="No weight specified",!is.na(yarn_weight_name))%>%
+  filter(!is.na(yardage),!is.na(grams))%>%
+  select(-n)
+```
+
+
+```{r}
+df1 <- df%>%
+  group_by(yarn_weight_name,texture_clean)%>%
+  summarise_all(.funs=mean)
+df1
+```
+
+
+
+
+```{r}
+library(showtext)
+library(sysfonts)
+library(extrafont)
+
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+# font_families_google()
+# font_add_google(name="Noto Sans",family="notosans")
+# font_add_google(name="Over the Rainbow",family="notosans")
+
+# font_add_google(name="Pangolin",family="pangolin")
+```
+
+```{r}
+library(igraph)
+library(ggraph)
+library(RColorBrewer)
+df2 <- df1%>%
+  select(yarn_weight_name,texture_clean,yardage)
+ 
+df2
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+d1<- df2%>%
+  mutate(from=".")%>%
+  relocate(from)%>%
+  rename(to=yarn_weight_name)%>%
+  select(-texture_clean,-yardage)%>%distinct()
+d2 <- df2%>%
+  rename(from=yarn_weight_name, 
+         to=texture_clean)%>%
+  select(-yardage)%>%distinct()
+
+hierarchy <- rbind(d1, d2)
+vertices <- data.frame(name = unique(c(as.character(hierarchy$from), 
+                                       as.character(hierarchy$to))) ) 
+
+
+
+
+mygraph <- graph_from_data_frame(hierarchy, vertices=vertices )
+
+df <- create_layout(mygraph, layout = 'dendrogram')
+
+# node_angle(df$x,df$y,degrees = T)
+
+node_ang_adj <- function(x,y) {
+  ifelse(node_angle(x,y) > -90, node_angle(x,y) + 180, node_angle(x,y))}
+
+# attributes(layout)$mygraph
+
+
+graph<-ggraph(mygraph, layout = 'dendrogram', circular = TRUE) + 
+  geom_edge_diagonal(alpha=0.9,
+                     show.legend = F) +
+  geom_node_point(aes(size = degree, color = (name),
+                      filter=leaf),
+                  size=6,
+                  alpha=0.5,
+                  show.legend = F) +
+  scale_color_viridis_d()+
+  geom_node_text(aes(x = x*1.1, 
+                     y=y*1.1, 
+                     hjust= ifelse(node_ang_adj(x,y) > 90, 1, 0),
+                     # vjust= 1,
+                     angle=node_ang_adj(x,y),
+                     filter = leaf, 
+                     label=name,
+                     colour=name),
+                 family = "pangolin",
+                 fontface="bold",
+                 show.legend = F,
+                 size=4, 
+                 alpha=1)+
+  geom_node_label(aes(x = x*1, 
+                     y=y*1, 
+                     filter = !leaf, 
+                     label=name, 
+                     colour=name), 
+                  show.legend = F,
+                  size=5, alpha=1,
+                  family = "pangolin",
+                  fontface="bold")+
+  labs(title="What's inside your YARN?",
+       subtitle = "textures for each type",
+       caption="DataSource: #TidyTuesday 2022 week41 Ravelry data | DataViz: Federica Gazzelloni (FG) Twitter: @fgazzelloni\n",
+       alt="Infographics") +
+  coord_equal(ratio=1/1.05) +
+  theme_void()+
+  theme(text=element_text(family="pangolin",face="bold",size=14),
+        plot.background = element_rect(colour = "grey90",fill="grey90"),
+        panel.background = element_rect(colour = "grey90",fill="grey90"),
+        plot.title = element_text(size=20),
+        plot.subtitle = element_text(size=18))
+
+graph
+ggsave("base.png",dpi=820)
+#plot.margin = margin(1,1,1,1,unit = "pt"))
+```
+
+# YARN at the center
+```{r}
+# install.packages("ggfx")
+library(ggplot2)
+library(ggfx)
+yarn<- ggplot() + 
+  as_reference(
+    geom_polygon(aes(c(0, 1, 1), c(0, 0, 1)), 
+                 colour = NA, fill = 'magenta'), 
+    id = "pattern"
+  ) + 
+  with_displacement(
+    geom_text(aes(0.5, 0.5, label = 'Is in your Yarn?'), size = 25, fontface = 'bold'), 
+    x_map = ch_red("pattern"), 
+    y_map = ch_blue("pattern"),
+    x_scale = unit(0.025, 'npc'),
+    id = "text"
+  ) +
+  with_blend(
+    geom_density_2d_filled(aes(rnorm(1e4, 0.5, 0.2), rnorm(1e4, 0.5, 0.2)), 
+                           show.legend = FALSE),
+    bg_layer = "text",
+    blend_type = "in",
+    id = "blended"
+  ) + 
+  with_shadow("blended", sigma = 3) + 
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = 'off') + 
+  labs(x = NULL, y = NULL)+
+  theme_void()+
+  theme(plot.background = element_blank(),
+        panel.background = element_blank())
+
+ggsave("yarn_logo2.png",dpi=600)
+```
+
+
+```{r}
+library(cowplot)
+ggdraw()+
+  draw_plot(graph,width = 1.1)+
+  draw_image("yarn_logo.png",scale=0.5,
+            x=0.08,y=-0.01)
+```
+
+
+
+
+```{r}
+ggsave("yarn3.png",
+       dpi=720,
+       width = 10,
+       height = 10,
+       bg="grey90")
+```
+
+
+
 
