@@ -1,0 +1,87 @@
+---
+title: "w43 GBB"
+output: html_document
+date: "2022-10-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+bakers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-10-25/bakers.csv')
+bakers%>%names
+```
+
+
+```{r}
+bakers%>%View
+```
+
+```{r}
+# install.packages("bakeoff")
+library(bakeoff)
+bakeoff::bakeoff_palette_names()
+```
+
+```{r}
+gbb <- bakers%>%
+  select(hometown,age,occupation,percent_episodes_appeared)%>%
+  group_by(hometown,occupation)%>%
+  summarise_all(.funs=mean)%>%
+  ungroup()
+gbb
+```
+
+
+```{r}
+library(showtext)
+library(sysfonts)
+library(extrafont)
+
+# set the fonts
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+font_add_google(name = "Sen",family="Sen")
+
+```
+
+```{r}
+gbb %>% #pull(age)%>%summary()
+   #filter(str_detect(occupation,"student|Student")) # %>% #count(occupation)
+  mutate(occupation=case_when(str_detect(occupation,"Retired|retired") ~ "Retired",
+                              str_detect(occupation,"Fashion designer|Fashion Designer") ~ "Fashion Designer",
+                              str_detect(occupation,"IT Manager|IT programme manager") ~ "IT Manager",
+                              str_detect(occupation,"student|Student") ~ "Student",
+                              TRUE ~ occupation)) %>% # count(occupation) %>%View
+  #filter(occupation=="Student") %>%
+  ggplot(aes(x=fct_reorder(occupation,age),y=age))+
+  #geom_col()+
+  geom_boxplot(aes(fill=occupation),show.legend = F)+
+  scale_y_continuous(expand = c(0,0))+
+  scale_x_discrete(expand = c(0,0)) +
+  coord_flip(ylim=c(15,75))+
+  scale_color_manual(values = bakeoff_colors())+
+  #viridis::scale_fill_viridis(discrete = T)+
+  labs(title="Great British Bakeoff Occupations",
+       subtitle="mean age variation",
+       caption="DataSource from the bakeoff package from Alison Hill, Chester Ismay, and Richard Iannone.\n\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       y="Age",x="Occupation")+
+  theme(text=element_text(family="Sen",face="bold",color="#1a1917"),
+        plot.title.position = "plot",
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(size=8,hjust = 0.2),
+        plot.caption = element_text(size=6),
+        axis.text.y = element_text(size=3),
+        panel.grid.major.x = element_line(color="#fa7268"),
+        panel.grid.major.y = element_line(color="#fa7268",size=0.1),
+        axis.ticks.x = element_line(color="#fa7268"),
+        axis.ticks.y = element_line(color="#fa7268"),
+        axis.line.x = element_line(color="#fa7268"))
+```
+```{r}
+ggsave("w43_gbb.png",dpi=200)
+```
+
