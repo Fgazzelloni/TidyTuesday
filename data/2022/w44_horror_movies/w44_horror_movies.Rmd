@@ -1,0 +1,129 @@
+---
+title: "Week44: Horror Movies"
+output: html_document
+date: "2022-11-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+horror_movies <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-01/horror_movies.csv')
+horror_movies%>%head
+```
+
+```{r}
+horror_movies%>%names
+```
+```{r}
+horror_movies%>%DataExplorer::profile_missing()
+```
+
+
+
+
+```{r}
+# Library
+library(tidyverse)
+library(streamgraph)
+
+# set the fonts
+library(showtext)
+library(sysfonts)
+library(extrafont)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+font_add_google(name="Creepster",family="Creepster")
+
+
+horror_movies<-readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-01/horror_movies.csv')
+
+horror_movies%>%
+  pull(revenue)%>%summary()
+horror_movies%>%
+filter(revenue==701842551)%>%View
+
+# Create data:
+horror_movies%>%
+  arrange(release_date) %>%
+  filter(str_detect(genre_names,"horror|Horror"),
+         status=="Released",
+         revenue> 0) %>%
+  select(id,title,original_language,
+         release_date,
+         genre_names,
+         popularity,vote_average,
+         budget,revenue) %>% 
+  mutate(title=trimws(title),
+         ymonth=zoo::as.yearmon(release_date),
+         year=lubridate::year(release_date)) %>%
+  group_by(original_language,year) %>%
+  summarize(avg_budget=round(mean(budget),2),
+            avg_revenue=round(mean(revenue),2))%>%
+  ungroup() %>%
+  arrange(-avg_budget,-avg_revenue) %>%
+  mutate(name=original_language,
+         value=avg_revenue) -> data
+
+
+
+
+# remotes::install_github("davidsjoberg/ggstream")
+library(ggstream)
+
+label<-data %>%
+  group_by(original_language)%>%
+  summarize(year=round(mean(year)),
+            value=max(value))%>%
+  ungroup()
+
+data %>% #pull(value)%>%summary()
+  ggplot(
+    aes(
+      year, value, 
+      color = original_language, 
+      fill = original_language
+    )
+  ) +
+  geom_stream(
+    geom = "polygon",
+    bw = .45,
+    size = 0,
+    show.legend = F
+  ) +
+  geom_stream(
+    geom = "contour",
+    color = "grey20",
+    size = 0.05,
+    bw = .45, # Controls smoothness
+    show.legend = F
+  ) +
+  scale_y_log10()+
+  geom_text(data=label,
+            aes(x=year,value,
+                label=original_language),
+            family="Creepster",
+            show.legend = FALSE,
+            check_overlap = FALSE)+
+  labs(title="Horror Movies",
+       subtitle="revenue by original language",
+       caption="Your fears are unleashed - IT (2017) reached the highest revenue with $701 842 551\nDataSource: #TidyTuesday 2022 week 44: Horror Movies by The Movie Database\nDataViz: Federica Gazzelloni (@fgazzelloni)",
+       x="Year",y="Revenue") +
+  theme_minimal()+
+  theme(text=element_text(color="white",
+                          family="Creepster"),
+        plot.title = element_text(size=25),
+        axis.text.x = element_text(color="grey80"),
+        plot.background = element_rect(color="grey5",fill="grey5"))
+
+# 7.53 x 6.03
+ggsave("w44_horror_movies.png",
+       dpi=300,
+       width = 7.53,
+       height = 6.03)
+# geom_stream_label(aes(label = original_language),)
+```
+
+
