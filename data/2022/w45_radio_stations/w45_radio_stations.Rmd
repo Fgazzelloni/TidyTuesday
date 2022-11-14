@@ -1,0 +1,428 @@
+---
+title: "w45 Radio Stations"
+output: html_document
+date: "2022-11-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+# unzip("data/FM_service_contour_current.zip")
+```
+Source of data: https://www.fcc.gov/media/radio/fm-service-contour-data-points
+
+this contour data is only generated once for each application ID number
+use https://www.fcc.gov/media/radio/fm-query to associate specific service contour records with the proper station or application data, match the application ID number or LMS application ID the record with the corresponding data in the LMS database. 
+```{r}
+raw_contour <- read_delim(
+  "data/FM_service_contour_current.txt",
+  delim = "|"
+)
+# save(raw_contour,file="data/raw_contour.RData")
+# load("data/raw_contour.RData")
+
+raw_contour%>%names
+#  [1] "application_id"     "service"           
+#  [3] "lms_application_id" "dts_site_number"   
+#  [5] "transmitter_site" 
+```
+
+```{r}
+conv_contour <- raw_contour |>
+  select(-last_col()) |>
+  set_names(nm = c(
+    "application_id", "service", "lms_application_id", "dts_site_number", "transmitter_site",
+    glue::glue("deg_{0:360}")
+  ))
+
+# save(conv_contour,file= "data/conv_contour.RData")
+
+lng_lat <- conv_contour |>
+  separate(
+    transmitter_site, 
+    into = c("site_lat", "site_long"), 
+    sep = " ,")
+
+# save(lng_lat,file= "data/lng_lat.RData")
+load("data/lng_lat.RData")
+```
+
+
+```{r}
+lng_lat%>%count(site_lat,site_long,sort=T)
+```
+
+```{r}
+df_coords <- lng_lat%>%
+  select(-dts_site_number) %>%
+  distinct() %>%
+  drop_na() %>%
+  mutate_all(trimws)%>%
+  mutate(application_id=as.numeric(application_id),
+         site_lat=as.numeric(site_lat),
+         site_long=as.numeric(site_long))
+
+df_coords %>%count(service)
+```
+
+```{r}
+df_coords1 <- df_coords %>%
+  as.data.frame() %>%
+  #slice(1:30) %>%
+  arrange(service) %>%
+  filter(service=="FM") 
+
+df_coords1%>%head()
+```
+
+
+```{r}
+library(sf) # spatiotemporal
+world <- sf::st_as_sf(maps::map("world", plot = FALSE, fill = TRUE))
+states <- sf::st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
+states
+```
+
+
+```{r}
+df_coords1 %>%
+  st_as_sf(coords=c(4,3),crs=4326)%>%
+  st_bbox()
+```
+
+
+```{r}
+ggplot(world) +
+  geom_sf(fill=NA) +
+  geom_point(data = df_coords1,
+             mapping = aes(site_long,site_lat),
+             shape=".",color="red",
+             inherit.aes = F) +
+  coord_sf(xlim = c(-171.73031,-25),ylim = c(10,71.29194))+
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+```
+
+
+
+```{r}
+df_coords <- lng_lat%>%
+  select(-dts_site_number) %>%
+  distinct() %>%
+  drop_na() %>%
+  mutate_all(trimws)%>%
+  mutate(application_id=as.numeric(application_id),
+         site_lat=as.numeric(site_lat),
+         site_long=as.numeric(site_long))
+
+
+df_coords %>% count(service)
+  
+df_coords1 <- df_coords %>%
+  as.data.frame() %>%
+  #slice(1:30) %>%
+  arrange(service) %>%
+  filter(service=="FM") 
+
+df_coords2 <- df_coords1 %>%
+  pivot_longer(cols = deg_0:deg_360,
+    names_to = "angle",
+    values_to = "values") 
+
+df_coords3 <- df_coords2 %>%
+  mutate(angle = str_remove(angle, "deg_"),
+         angle = as.integer(angle))
+
+# lms_application_id
+df_coords3[361,]
+df_coords3%>%
+  filter(angle==360)%>%head
+
+
+
+df_coords4 <- df_coords3 %>%
+  separate(values,
+    into = c("deg_lat", "deg_lng"),
+    sep = " ,")
+
+
+df_coords5 <- df_coords4 %>%
+  mutate(deg_lat= ifelse(is.na(deg_lng),site_lat,deg_lat),
+         deg_lng= ifelse(is.na(deg_lng),site_long,deg_lng))
+  
+# save(df_coords5,file="rdata/df_coords5.RData")
+
+df_coords5%>%
+  DataExplorer::profile_missing()
+```
+
+
+```{r}
+df_coords5%>%dim # 4550766
+df_coords5%>%head
+```
+
+
+```{r}
+df_coords5%>%count(application_id)
+```
+
+```{r}
+df_coords_750_2037197 <- df_coords5%>%
+  filter(application_id%in%c(750,2037197)) # dim # 361
+  
+
+df_coords_750_2037197%>%count(application_id)
+df_coords_750_2037197%>%
+  filter(application_id==750)
+st_bbox(world)
+
+  ggplot() +
+  #geom_sf(fill=NA) +
+  geom_point(data = df_coords_750_2037197,
+             mapping = aes(deg_lng,deg_lat),
+             #shape=".",
+             color="red",
+             inherit.aes = F) 
+    coord_sf(xlim = c(-180.00000,190.27084),ylim = c(-85.19218,83.59961))+
+  #coord_sf(xlim = c(-171.73031,-25),ylim = c(10,71.29194))+
+  theme_classic() 
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+
+  
+```
+
+
+
+```{r}
+df_coords_selected_id <- df_coords5%>% 
+  arrange(application_id) %>% 
+  count(application_id) %>% 
+  slice(1:10) %>%
+  select(-n) %>% 
+  unlist()
+
+df_coords5_selection <- df_coords5 %>%
+  filter(application_id%in%df_coords_selected_id) %>%
+  distinct() # dim # 361
+df_coords5%>%dim  
+df_coords5_selection%>%names
+
+df_coords5_selection_sf<- df_coords5_selection%>%
+  st_as_sf(coords=c(8,7),crs=4326) 
+
+df_coords51 <- df_coords5%>%
+  st_as_sf(coords=c(8,7),crs=4326) 
+
+  ggplot(world) +
+    geom_sf(fill=NA) +
+    geom_sf(data = df_coords51, 
+            aes(color=application_id),
+            shape=21,stroke=0.01,
+            #shape=".",
+            alpha=0.2,
+            inherit.aes = F) +
+    coord_sf(xlim = c(-171.73031,-25),ylim = c(10,71.29194))+
+      theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+
+
+```
+
+
+
+```{r}
+df_coords5%>%count(application_id)
+```
+
+
+```{r}
+df_coords5_all_sf <- df_coords5 %>%
+   st_as_sf(coords=c(7,6),crs=4326) 
+
+ggplot(world) +
+    geom_sf(fill=NA) +
+    geom_sf(data = df_coords5_all_sf, 
+            #aes(color=application_id),
+            shape=21,stroke=0.01,
+            #shape=".",
+            alpha=0.2,
+            inherit.aes = F) +
+    coord_sf(xlim = c(-171.73031,-25),ylim = c(10,71.29194))+
+      theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+
+map
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+state_stations <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-08/state_stations.csv')
+
+```
+
+```{r}
+state_stations%>%names
+```
+
+```{r}
+state_stations1 <- state_stations%>%
+  select(call_sign,frequency,state,city,format)
+
+state_stations1%>%head
+```
+```{r}
+state_stations%>%DataExplorer::profile_missing()
+```
+
+
+```{r}
+state_stations%>%dim
+```
+
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2022, week = 45)
+station_info <- tuesdata$station_info
+
+
+station_info%>%dim
+station_info%>%DataExplorer::profile_missing()
+```
+
+
+```{r}
+station_info%>%count(service)
+```
+
+```{r}
+station_info1 <- station_info%>%
+  select(call_sign,facility_id) 
+station_info1%>%head
+```
+
+
+```{r}
+station_info1%>%DataExplorer::profile_missing()
+```
+
+```{r}
+df_coords2 <- df_coords1 %>%
+  mutate(application_id=as.numeric(application_id))# 12604
+
+station_info1 %>% distinct() %>%dim # 2065
+
+
+join <- state_stations1 %>% # 17186
+  inner_join(station_info1,by="call_sign")
+
+
+state_stations1 %>% # 17186
+  inner_join(station_info1,by="call_sign") %>% head # left 17186 # right 2065 # inner 2037 # full 17214
+  right_join(df_coords5,by=c("facility_id"="application_id")) %>%DataExplorer::profile_missing()
+
+  df_coords5%>%distinct()%>%dim # 4551127
+  join %>%distinct()%>%dim # 2037
+setdiff(df_coords5$application_id,join$facility_id)  %>%length() # 12551
+setdiff(join$facility_id,df_coords5$application_id)  %>%length() # 2049 # 2021
+```
+
+```{r}
+full_join<-join %>%
+  inner_join(df_coords5,by=c("facility_id"="application_id"))
+  
+
+full_join%>% # dim # 5776
+  relocate(call_sign,facility_id,lms_application_id)%>%
+  distinct()%>%dim # 5776
+  # DataExplorer::profile_missing()
+  
+  
+full_join %>%head
+```
+```{r}
+full_join%>%names
+```
+
+```{r}
+full_join%>%head
+```
+```{r}
+full_join1<- full_join%>%
+  mutate(format=str_to_title(format)) # %>%
+    #filter(format=="Alternative Rock")
+  # count(format,sort=T)
+full_join1%>%dim
+```
+
+```{r}
+full_join1%>%
+  group_by(state) %>%
+  mutate()
+```
+
+
+```{r}
+full_join_sf <- full_join1 %>%
+   st_as_sf(coords=c(13,12),crs=4326) 
+
+
+full_join_sf_centr <- full_join1 %>%
+  group_by(city,format)%>%
+  summarize(site_lat=mean(range(site_lat)),site_long=mean(range(site_long)),.groups="drop")%>% 
+  ungroup() %>%
+   st_as_sf(coords=c(4,3),crs=4326) 
+
+
+ggplot(world) +
+    geom_sf(fill=NA) +
+  geom_sf_text(data = full_join_sf_centr,
+            aes(label=format),
+            #label.padding = unit(0.01, "lines"),
+            size=2,
+            inherit.aes = F) +
+    geom_sf(data = full_join_sf, 
+            aes(color=factor(format)),
+            shape=21,stroke=0.01,
+            #shape=".",
+            alpha=0.2,
+            inherit.aes = F) +
+    coord_sf(xlim = c(-171.73031,-25),ylim = c(10,71.29194))+
+      theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank())
+```
+
+```{r}
+ggsave("test.png")
+```
+
+

@@ -16,9 +16,21 @@ library(geojsonio)
 library(RColorBrewer)
 library(rgdal)
 library(rgeos)
-library(extrafont)
-# loadfonts()
 ```
+
+
+```{r}
+# Set the fonts
+library(showtext)
+library(sysfonts)
+library(extrafont)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+font_add_google(name="Chelsea Market",
+                family="Chelsea Market")
+```
+
+
 
 ```{r}
 #tuesdata <- tidytuesdayR::tt_load('2022-06-14')
@@ -49,11 +61,13 @@ drought_avg<- drought_fips%>%
 
 ### Load the map hex data and make extra features
 
+source: https://d3-graph-gallery.com/graph/hexbinmap_geo_basic.html
 ```{r}
 # load json data
 map_hex <- 
   geojson_read("us_states_hexgrid.geojson.json",  what = "sp")
 
+# map_hex%>%class # SpatialPolygonsDataFrame
 # set the names
 map_hex@data <-
   map_hex@data %>%
