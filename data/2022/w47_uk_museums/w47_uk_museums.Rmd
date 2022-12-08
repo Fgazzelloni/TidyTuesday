@@ -1,0 +1,113 @@
+---
+title: "week 47 UK museum"
+author: "fg"
+date: "2022-11-29"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2022, week = 47)
+museums <- tuesdata$museums
+museums %>% head
+```
+
+
+```{r}
+museums %>%
+  DataExplorer::profile_missing()
+```
+
+```{r}
+# https://stackoverflow.com/questions/54560369/png-of-static-map-using-r-and-mapdeck
+library(tidyverse)
+df = read.csv("https://git.io/geocompr-mapdeck")
+
+df
+```
+
+
+
+```{r}
+library(mapdeck)
+
+set_token("MAPBOX_TOKEN")
+ms = mapdeck_style("dark")
+
+df <- df[!is.na(df$lat), ]
+
+mapdeck(style = ms, pitch = 45) %>%
+  add_grid(data = df, lat = "lat", lon = "lng", 
+           cell_size = 1000,
+           elevation_scale = 50, 
+           layer_id = "grid_layer",
+           colour_range = colourvalues::colour_values(1:6, palette = "plasma")) 
+```
+
+
+
+```{r}
+mapdeck(style = mapdeck_style('dark'),zoom = 1) %>% 
+    add_grid(data = df, 
+             lat = "lat", 
+             lon = "lng", 
+             cell_size = 1000,
+             elevation_scale = 50, 
+             layer_id = "grid_layer",
+             colour_range = colourvalues::colour_values(1:6, palette = "plasma")) %>%
+  add_scatterplot(data = museums,
+                  lat = "Latitude",
+                  lon = "Longitude",
+                  radius = 0.5,
+                  legend = TRUE,
+                  fill_colour = "Accreditation",
+                  layer_id = "scatter_layer",
+                  palette = "viridis") 
+
+```
+
+
+
+```{r}
+table <- museums %>%
+select(museum_id,`Village,_Town_or_City`,Accreditation,Size,Subject_Matter) %>%
+  janitor::clean_names() %>%
+  group_by(accreditation) %>%
+  count(size) %>%
+  mutate(pct=round(n/sum(n)*100,2)) %>%
+   ungroup() %>%
+  pivot_wider(names_from = size,values_from = pct) %>%
+  select(-n) %>%
+  pivot_longer(cols = 2:6,names_to = "type",values_to = "pct")%>%
+  na.omit() %>%
+  pivot_wider(names_from = accreditation,values_from = pct) %>%
+  gt::gt()
+
+table
+```
+
+
+```{r}
+library(cowplot)
+
+ggdraw() +
+  draw_image("base_map.png") +
+  draw_image("table.png",
+             scale=0.25,
+             x=-0.3,y=0)
+
+```
+
+```{r}
+ggsave("test.png",
+       dpi=320)
+```
+
+
