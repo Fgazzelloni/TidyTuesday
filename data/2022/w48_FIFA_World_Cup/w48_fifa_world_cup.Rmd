@@ -1,0 +1,177 @@
+---
+title: "Untitled"
+author: "fg"
+date: "2022-11-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+# set the fonts
+library(showtext)
+library(sysfonts)
+library(extrafont)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+font_add_google(name="Roboto Condensed",
+                family="Roboto Condensed")  
+font_add_google(name="Nerko One",
+                family="Nerko One")
+```
+
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2022, week = 48)
+# wcmatches <- tuesdata$wcmatches
+worldcups <- tuesdata$worldcups
+```
+
+
+
+```{r}
+worldcups%>%names
+```
+
+```{r}
+worldcups%>%DataExplorer::profile_missing()
+```
+
+```{r}
+worldcups%>%head
+```
+
+
+```{r}
+worldcups%>%pull(year)%>%summary()
+```
+
+```{r}
+countries <- worldcups%>%
+  pivot_longer(cols = 2:6,names_to = "position",values_to = "countries") %>%
+  count(countries)%>%
+  pull(countries)
+
+countries
+```
+
+```{r}
+world <- rnaturalearth::ne_countries(returnclass = "sf")
+
+a <- world%>%
+  filter(name%in%countries) %>%
+  data.frame() %>%
+  pull(name)
+
+setdiff(countries,a)
+```
+```{r}
+world%>%
+  data.frame() %>%
+  arrange(name) %>%
+  pull(name) 
+```
+
+```{r}
+worldcups %>%
+    pivot_longer(cols = 2:6,names_to = "position",values_to = "countries")%>%
+  distinct() %>%
+  filter(countries=="Yugoslavia")
+```
+
+
+
+```{r}
+worldcups_long <- worldcups %>%
+  pivot_longer(cols = 2:6,names_to = "position",values_to = "countries")%>%
+  distinct() %>%
+  mutate(countries=case_when(countries=="Czechoslovakia"~"Czech Rep.",
+                             countries=="England"~"United Kingdom",
+                             countries=="Japan, South Korea"~"Japan",
+                             countries=="South Korea"~"Korea",
+                             countries=="Soviet Union"~"Russia",
+                             countries=="USA"~"United States",
+                             countries=="West Germany"~"Germany",
+                             TRUE~countries))
+
+
+worldcups_long
+```
+
+
+```{r}
+worldcups_long%>%count(year)
+```
+
+
+```{r}
+library(sf)
+full_sf <- worldcups_long %>%
+  left_join(world,by=c("countries"="name")) %>%
+  st_as_sf() 
+
+full_sf
+```
+
+
+```{r}
+ggplot(world) +
+  geom_sf() +
+  geom_sf(data = full_sf,aes(fill=position))
+```
+
+```{r}
+ggplot(world) +
+  geom_sf() +
+  geom_sf(data = full_sf,aes(fill=attendance))
+```
+
+
+
+Continuous:
+
+- scale_fill_gsea
+- scale_fill_material
+
+```{r}
+ggplot(world%>%filter(!name=="Antarctica")) +
+  geom_sf(color="grey80",
+          alpha=0.8,
+          linewidth=0.05,
+          fill="grey40") +
+  geom_sf(data = full_sf,
+          aes(fill=goals_scored),
+          color="grey70",
+          linewidth=0.2) +
+  coord_sf() +
+  ggsci::scale_fill_material(palette = c("cyan"), 
+                             alpha = 0.8, reverse = FALSE) +
+  guides(color="none") +
+  labs(title="FIFA World Cup\ntotal Goals scored since 1930",
+       subtitle="",
+       caption="#TidyTuesday week48 FIFA WORLD CUP\nDataSource: FIFA World Cup | DataViz: Federica Gazzelloni",
+       fill="Goals Scored\n\n1930-2018") +
+  ggthemes::theme_map() +
+  theme(text=element_text(color="cyan",family = "Roboto Condensed"),
+        plot.caption = element_text(hjust = 0.5,lineheight = 1.5),
+        legend.position = c(0,0),
+        legend.background = element_blank(),
+        plot.title = element_text(family="Nerko One",size=16,hjust = 0.5),
+        plot.background = element_rect(color="black",fill="black"),
+        panel.background = element_rect(color="black",fill="black"))
+```
+
+
+```{r}
+ggsave("w48_fifa_world_cup.png",
+       dpi=220,
+       width = 9,
+       height = 6)
+```
+
+
+
