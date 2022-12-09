@@ -85,7 +85,7 @@ select(museum_id,`Village,_Town_or_City`,Accreditation,Size,Subject_Matter) %>%
    ungroup() %>%
   pivot_wider(names_from = size,values_from = pct) %>%
   select(-n) %>%
-  pivot_longer(cols = 2:6,names_to = "type",values_to = "pct")%>%
+  pivot_longer(cols = 2:6,names_to = "Type",values_to = "pct")%>%
   na.omit() %>%
   pivot_wider(names_from = accreditation,values_from = pct) %>%
   gt::gt()
@@ -106,7 +106,7 @@ ggdraw() +
 ```
 
 ```{r}
-ggsave("test.png",
+ggplot2::ggsave("test.png",
        dpi=320)
 ```
 
