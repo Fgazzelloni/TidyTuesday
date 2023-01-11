@@ -1,0 +1,18 @@
+---
+title: "w50 Retail Sales"
+author: "fg"
+date: "2022-12-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2022, week = 50)
+tuesdata$state_retail
+```
+

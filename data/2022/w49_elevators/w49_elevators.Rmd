@@ -1,0 +1,166 @@
+---
+title: "w49 Elevators"
+author: "fg"
+date: "2022-12-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2022-12-06')
+elevators <- tuesdata$elevators
+elevators%>%names
+```
+
+```{r}
+elevators%>%DataExplorer::profile_missing()%>%
+  mutate(pct_missing=round(pct_missing,2))%>%
+  arrange(pct_missing)
+```
+
+
+```{r}
+elevators1%>%head
+```
+
+
+
+```{r}
+elevators1 <- elevators%>%
+  janitor::clean_names()%>%
+  mutate(date=as.Date(as.character(dv_status_date), format='%Y%m%d',tz="UTC")) %>%
+  select(zip_code,borough,device_type,latitude,longitude,
+         date)%>% # dim 76088     8
+  na.omit() %>% # dim 66789     8
+  mutate(zip_code=as.numeric(sub("\\D*(\\d{5}).*", "\\1", zip_code)))%>%
+  arrange(date)%>%
+  filter(!zip_code==0 & !zip_code== 99999,
+         longitude> -75)
+```
+
+```{r}
+elevators1 %>%
+  ggplot(aes(longitude,latitude)) +
+  geom_point(aes(color=factor(device_type)))+
+  coord_equal()
+```
+
+```{r}
+library(ggnewscale)
+ggnewscale::new_scale_color()
+```
+
+```{r}
+usdata::county_complete%>%names
+library(zipcodeR)
+zipcodeR::zip_code_db%>%head
+elevators1%>%count(zip_code)%>%dim # 185
+zipcodeR::zip_code_db%>%
+  filter(zipcode%in%elevators1$zip_code)
+zipcodeR::geocode_zip(elevators1$zip_code) # 183
+```
+```{r}
+us_county_map <- map_data("county")
+
+ggplot()+
+  geom_polygon(data=us_county_map,aes(x=long,y=lat,group = group),
+               fill=NA,color = "lightblue")
+```
+```{r}
+us_county_map%>%head
+```
+```{r}
+us_county_map_centroids <- us_county_map%>%
+  group_by(subregion) %>%
+  mutate(long=mean(range(long)),lat=mean(range(lat)))%>%
+  ungroup()%>%
+  select(-order,-region)%>%
+  distinct()
+us_county_map_centroids
+```
+```{r}
+elevators1_centroids <- elevators1%>%
+  group_by(borough) %>%
+  mutate(long=mean(range(longitude)),lat=mean(range(latitude)))%>%
+  ungroup()%>%
+  select(borough,zip_code,long,lat)%>%
+  distinct()
+```
+
+
+
+```{r warning=FALSE}
+elevators1 %>%
+  ggplot(aes(longitude,latitude)) +
+   geom_polygon(data = us_county_map,
+                aes(x=long,y=lat,group = group,fill=subregion),
+                color = "lightblue",alpha=0.1)+
+  geom_point(aes(color=factor(borough)),
+             shape=21,stroke=0.1,size=0.5)+
+  scale_color_discrete()+
+  guides(color=guide_legend(title="Borough"),fill="none")+
+  ggnewscale::new_scale_color()+
+  geom_point(aes(color=zip_code),shape=".",alpha=0.2) +
+  scale_color_continuous(type = "viridis")+
+  geom_text(data = elevators1_centroids,
+             aes(x=long,y=lat,label=borough)) +
+  coord_map(xlim = range(elevators1$longitude),ylim = range(elevators1$latitude))+
+  labs(title = "",
+       subtitle = "",
+       color=c("zip code","Borough"))+
+  ggthemes::theme_map()+
+  theme(legend.position = c(-0.2,0),
+        legend.background = element_blank())+
+  facet_wrap(vars(device_type))
+```
+
+
+
+```{r warning=FALSE}
+elevators1 %>% # count(device_type)
+  filter(device_type=="Passenger Elevator (P)") %>%
+  ggplot(aes(longitude,latitude)) +
+   geom_polygon(data = us_county_map,
+                aes(x=long,y=lat,group = group,fill=subregion),
+                color = "lightblue",alpha=0.1)+
+  geom_point(aes(color=factor(borough)),
+             shape=21,stroke=0.1,size=0.5)+
+  scale_color_discrete()+
+  guides(color=guide_legend(title="Borough"),fill="none")+
+  ggnewscale::new_scale_color()+
+  geom_point(aes(color=zip_code),shape=".",alpha=0.2) +
+  scale_color_continuous(type = "viridis")+
+  geom_point(data = elevators1 %>% filter(device_type=="Handicap Lift (H)"),
+             aes(longitude,latitude),color="red",size=0.3)+
+  geom_text(data = elevators1_centroids,
+             aes(x=long,y=lat,label=borough),
+            color="white",family="Roboto Condensed") +
+  coord_map(xlim = range(elevators1$longitude),ylim = range(elevators1$latitude))+
+  labs(title = "New York City Handicap Lifts availability",
+       subtitle = "Registered Passenger Elevator devices from the Department of Buildings 2015",
+       caption="DataSource: #TidyTuesday 2022 week49 Elevators by @emilhvitfeldt | Graphics: Federica Gazzelloni",
+       color=c("zip code","Borough"))+
+  ggthemes::theme_map()+
+  theme(text = element_text(color="white",family="Roboto Condensed"),
+        plot.title = element_text(size=14),
+        plot.caption = element_text(size=10.5),
+        legend.position = "none", # c(-0.2,0),
+        legend.background = element_blank()) +
+  annotate("text", 
+           x = -74, y = 40.52, 
+           label = "How to read it:\nPassenger Elevators are colored by borough and zip code,\nwhile red dots indicate the presence of Handicap Lifts",color="white",size=3,family="Roboto Condensed")
+```
+
+
+```{r}
+ggsave("w49_elevators.png",bg="black")
+```
+
+

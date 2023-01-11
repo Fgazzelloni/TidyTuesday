@@ -1,0 +1,17 @@
+---
+title: "Week 52 Star Trek Timelines"
+author: "fg"
+date: "2023-01-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2022, week = 52)
+```
+
