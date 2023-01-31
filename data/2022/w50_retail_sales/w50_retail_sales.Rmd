@@ -5,14 +5,180 @@ date: "2022-12-13"
 output: html_document
 ---
 
+
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	comment = ""
+)
 ```
 
+Load libraries
 
 ```{r}
 library(tidyverse)
-tuesdata <- tidytuesdayR::tt_load(2022, week = 50)
-tuesdata$state_retail
+library(fuzzyjoin)
+library(ggstream)
+library(colorspace)
+colorspace::
 ```
 
+Set the theme
+
+```{r}
+theme_set(theme_minimal(base_family = "Roboto Condensed",
+                        base_size = 12))
+```
+
+```{r}
+theme_update(
+  plot.title = element_text(
+    size = 20,
+    face = "bold",
+    hjust = .5,
+    margin = margin(10, 0, 30, 0)
+  ),
+  plot.caption = element_text(
+    size = 9,
+    color = "grey40",
+    hjust = .5,
+    margin = margin(20, 0, 5, 0)
+  ),
+  axis.text.y = element_blank(),
+  axis.title = element_blank(),
+  plot.background = element_rect(fill = "grey88", color = NA),
+  panel.background = element_rect(fill = NA, color = NA),
+  panel.grid = element_blank(),
+  panel.spacing.y = unit(0, "lines"),
+  strip.text.y = element_text(angle = 0),
+  legend.position = "bottom",
+  legend.text = element_text(size = 9, color = "grey40"),
+  legend.box.margin = margin(t = 30),
+  legend.background = element_rect(
+    color = "grey40",
+    linewidth = .3,
+    fill = "grey95"
+  ),
+  legend.key.height = unit(.25, "lines"),
+  legend.key.width = unit(2.5, "lines"),
+  plot.margin = margin(rep(20, 4))
+)
+```
+
+
+And the color palette
+```{r}
+pal <- c("#FFB400",
+         "#C20008",
+         "#13AFEF",
+         "#8E038E")
+```
+
+
+Load the data
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2022, week = 50)
+coverage_codes <- tuesdata$coverage_codes
+state_retail <- tuesdata$state_retail
+```
+
+Add the states' names
+```{r}
+fipcodes <- tigris::fips_codes %>%
+  select(state, state_name)
+```
+
+Join all sets
+```{r}
+my_df <- state_retail %>%
+  left_join(fipcodes, by = c("state_abbr" = "state")) %>%
+  mutate(state_name = ifelse(state_abbr == "USA", "USA", state_name)) %>%
+  distinct() %>%
+  merge(coverage_codes, by = "coverage_code") %>%
+  arrange()
+
+my_df %>% head
+```
+
+
+Data wrangling
+  
+```{r}
+my_df1 <- my_df %>%
+  select(-naics) %>%
+  mutate(
+    coverage = case_when(
+      coverage == "non-imputed coverage is greater than or equal to 10% and less than 25% of the state/NAICS total" ~
+        "greater than or equal 10% and less than 25% of the state/NAICS total",
+      coverage == "non-imputed coverage is greater than or equal to 25% and less than 50% of the state/NAICS total" ~
+        "greater than or equal to 25% and less than 50% of the state/NAICS total",
+      coverage == "non-imputed coverage is greater than or equal to 50% of the state/NAICS total." ~
+        "greater than or equal to 50% of the state/NAICS total",
+      coverage == "non-imputed coverage is less than 10% of the state/NAICS total." ~
+        "less than 10% of the state/NAICS total",
+      TRUE ~ coverage
+    ),
+    month = as.character(month),
+    year = zoo::as.yearmon(paste0(year, "-", month)),
+    change_yoy = ifelse(change_yoy == "S", 0, change_yoy),
+    change_yoy_se = ifelse(change_yoy_se == "S", 0, change_yoy_se),
+    change_yoy = as.numeric(change_yoy),
+    change_yoy_se = as.numeric(change_yoy_se),
+    coverage = as.factor(coverage),
+    coverage = paste(coverage_code, "-", coverage)
+  ) %>%
+  filter(state_abbr %in% c("USA", "PA", "MD", "MT")) %>%
+  filter(!coverage_code == "S") %>%
+  group_by(state_name, coverage, year) %>%
+  summarise_if(is.numeric, sum, na.rm = TRUE) %>%
+  mutate(change_yoy = scale(change_yoy, center = FALSE)) %>%
+  ungroup() %>%
+  mutate(year = as.POSIXct(year),
+         year = as.Date(year))
+```
+
+
+Make the plot
+```{r}
+my_df1 %>%
+  ggplot(aes(
+    x = year,
+    y = change_yoy,
+    color = coverage,
+    fill = coverage
+  )) +
+  geom_stream(
+    geom = "contour",
+    color = "white",
+    linewidth = 1.25,
+    bw = .45 # Controls smoothness
+  ) +
+  geom_stream(geom = "polygon",
+              bw = .45,
+              linewidth = 0.2) +
+  facet_grid(state_name ~ .,
+             scales = "free_y",
+             space = "free") +
+  scale_y_continuous(trans = scales::modulus_trans(0.1, 1)) +
+  scale_x_date(date_breaks = "6 months",
+               date_labels = "%b-%Y",
+               expand = c(0, 0)) +
+  scale_color_manual(expand = c(0, 0),
+                     values = pal,
+                     guide = "none") +
+  scale_fill_manual(values = pal,
+                    name = NULL) +
+  labs(title = "Total Year-Over-Year percent change\nin monthly retail sales value",
+       subtitle = "North American Industry Classification System (NAICS) top YoY states",
+       caption = "DataSource: #TidyTuesday 2022 Week50 | Monthly State Retail Sales | DataViz: Fgazzelloni") +
+  theme(legend.direction = "vertical")
+```
+
+  
+```{r}
+ggsave("w50_retail_sales.png")
+```
+  
