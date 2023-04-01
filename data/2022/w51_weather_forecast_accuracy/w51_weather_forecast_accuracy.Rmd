@@ -6,11 +6,211 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = "",
+                      cache = TRUE)
+```
+
+The amount of annual precipitation is closely related to the monthly temperature patterns throughout the year. This is because temperature can significantly affect precipitation, which in turn can impact the environment and the ecosystem.
+
+Throughout the year, different regions experience different temperature changes during each month. Generally, in areas with a cold winter season, monthly temperatures tend to be lower, while areas with a warm tropical climate can have higher temperatures year-round. As temperatures increase, the evaporation rate also increases, leading to more moisture in the atmosphere. This increased moisture can result in higher precipitation levels.
+
+In summary, the relationship between annual precipitation and monthly temperatures is a part-to-whole connection because it involves the overall amount of precipitation throughout the year being impacted by the individual temperature conditions of each month. Monthly temperature patterns are a crucial component in understanding and predicting the amount of precipitation and the ecological systems that depend on it.
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2022, week = 51)
+```
+
+
+```{r eval=TRUE}
+library(tidyverse)
+library(maps)
+library(mapdata)
 ```
 
 
 ```{r}
-tuesdata <- tidytuesdayR::tt_load(2022, week = 51)
+weather_forecasts <- tuesdata$weather_forecasts
+cities <- tuesdata$cities
+outlook_meanings<- tuesdata$outlook_meanings
+```
+
+```{r}
+weather_forecasts%>%names
+```
+
+```{r}
+weather_forecasts%>%head
+```
+
+```{r}
+df <- weather_forecasts%>%
+  inner_join(cities,by=c("city","state"))
+```
+
+```{r eval=TRUE}
+# save(df,file="df.RData")
+load("data/df.RData")
+
+df%>%names
+```
+
+
+```{r eval=TRUE}
+df_mean <- df%>%
+  mutate(ymon=zoo::as.yearmon(date),.after=date)%>% # DataExplorer::profile_missing()
+  group_by(ymon,state)%>%
+  summarize(observed_temp=ifelse(is.na(observed_temp),mean(observed_temp,na.rm = TRUE),observed_temp),
+          forecast_temp=ifelse(is.na(forecast_temp),mean(forecast_temp,na.rm = TRUE),forecast_temp),
+          observed_precip=ifelse(is.na(observed_precip),mean(observed_precip,na.rm = TRUE),observed_precip),
+          avg_annual_precip=ifelse(is.na(avg_annual_precip),mean(avg_annual_precip,na.rm = TRUE),avg_annual_precip),
+          lon,lat,state)%>%
+  distinct() %>%
+  mutate(observed_temp=mean(observed_temp),
+         forecast_temp=mean(forecast_temp),
+         observed_precip=mean(observed_precip),
+         avg_annual_precip=mean(avg_annual_precip))%>%
+  distinct() 
+
+df_mean <- df_mean%>%
+  mutate(year=year(ymon),.after = ymon)
+```
+
+
+
+```{r eval=TRUE}
+state<- map_data("state")
+
+st <- state%>%
+  mutate(state_name=str_to_title(region))
+state_name <- unique(st$state_name)
+abbr <- state.abb[match(state_name,state.name)]
+
+st_name_abb <- cbind(state_name,abbr)%>%
+  as.data.frame()%>%
+  mutate(abbr=ifelse(state_name=="District Of Columbia","DC",abbr))
+
+
+states_full <- st%>%
+  inner_join(st_name_abb,by=c("state_name"))
+```
+
+```{r eval=TRUE}
+df_mean_full <- states_full%>%
+  inner_join(df_mean,by=c("abbr"="state"))%>%
+  distinct()
+```
+
+
+```{r eval=TRUE}
+map <- df_mean_full%>%
+  filter(year==2021)%>%
+  ggplot(aes(x=long,y=lat.x,group=group))+
+  geom_polygon(aes(fill=avg_annual_precip))+
+    geom_point(
+    data = df %>% count(city, lon, lat),
+    mapping = aes(lon, lat, group = city),
+    color = "red",
+    shape = 21,
+    stroke = 0.2,
+    inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = df %>% count(city, lon, lat),
+    mapping = aes(lon, lat, label = city),
+    show.legend = FALSE,
+    color = "black",
+    size = 1.5,
+    check_overlap = TRUE,
+    family="Roboto Condensed",
+    inherit.aes = FALSE
+  ) +
+  coord_quickmap()+
+   labs(title = "#30DayMapChallenge 2023 Day1 - Part to whole",
+       subtitle = "Comparing Weather Forecasting Accuracy in the United States",
+       caption="DataSource: #TidyTuesday 2022 week51|Weather Forecast Accuracy\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day1",
+       fill="AVG Annual Precip") +
+  theme(panel.background = element_rect(color = "black", fill = "#dedede"),
+        axis.title = element_blank(),
+        text = element_text(color="navy",family="Roboto Condensed"),
+        panel.grid = element_line(linewidth=0.02,color="grey40"),
+        axis.text = element_blank(),
+        axis.ticks = element_blank())
+
+map
+```
+
+```{r}
+ggsave("map.png",
+       width = 7,height = 5)
+```
+
+
+```{r}
+df_mean%>%
+  filter(year==2021)%>%
+  mutate(month=month(ymon,label = TRUE ),.after = year)%>%
+  mutate(max_mean_temp=mean(observed_temp))%>%
+  arrange(-max_mean_temp)
+```
+
+```{r}
+df_mean%>%
+  filter(state%in%c("VI","PR","HI","FL","LA"),
+         ymon=="Jan 2021")%>%
+  arrange(-observed_temp)
+```
+
+
+```{r eval=TRUE}
+p <- df_mean%>%
+  filter(year==2021)%>%
+  mutate(month=month(ymon,label = TRUE ),.after = year)%>%
+  mutate(max_temp=max(observed_temp))%>%
+  ggplot(aes(factor(month),observed_temp,group=state))+
+  geom_line(aes(color=observed_temp))+
+  geom_text(data=data.frame(month=rep("Jan",5),
+                            observed_temp=c(80,77.6,75.4,66.7,60.8),
+                           label=c("VI","PR","HI","FL","LA")),
+            aes(factor(month),observed_temp,label=label),
+            inherit.aes = FALSE)+
+  labs(color="2021 Monthly Observed Temperature by States")+
+  ggthemes::theme_economist_white()+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size=9),
+        plot.background = element_blank())
+
+p
+```
+
+
+```{r}
+ggsave("p.png",
+       width = 7,height = 5)
+```
+
+
+
+```{r}
+ggsave(map,"map.png")
+```
+
+```{r eval=TRUE}
+library(cowplot)
+
+ggdraw()+
+  draw_image("images/map.png")+
+  draw_image("images/p.png",
+             scale=0.35,
+            x=0.3,y=0.3)+
+  draw_label(label="Annual precipitation and monthly \ntemperature are parts of the climate system. Higher annual \nprecipitation tends to result in lower monthly temperatures \nas more water in the air can lead to increased cloud cover \nand less sunlight reaching the ground. Conversely, lower \nannual precipitation usually means higher monthly \ntemperatures as there is less water in the air to absorb and \nreflect sunlight.",x=0.15,y=.55,size=5,fontfamily = "Roboto Condensed")
+  
+```
+
+```{r}
+ggsave("full.png",width = 7,height = 5)
 ```
 
