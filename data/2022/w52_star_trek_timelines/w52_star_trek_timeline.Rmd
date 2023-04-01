@@ -1,17 +1,129 @@
 ---
 title: "Week 52 Star Trek Timelines"
 author: "fg"
-date: "2023-01-10"
+date: "2023-04-02"
 output: html_document
 ---
 
+
+## #30DayChartChallenge - Day2 - Waffle
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = "",
+                      cache = TRUE)
+```
+
+Load the libraries
+```{r eval=TRUE}
+library(tidyverse)
 ```
 
 
-```{r}
-library(tidyverse)
+
+```{r eval=TRUE}
 tuesdata <- tidytuesdayR::tt_load(2022, week = 52)
+tlBooks <- tuesdata$tlBooks
+tlFootnotes<-tuesdata$tlFootnotes
+```
+
+```{r eval=TRUE}
+tlBooks%>%names
+```
+
+```{r eval=TRUE}
+tlFootnotes%>%names
+```
+
+Join the two sets by `footnote`
+
+The new dataset combines, year, title, ... with the footnote of the `Star Trek Timelines`.
+The data comes from the {rtrek} package by Georgios Karamanis.
+
+```{r eval=TRUE}
+df <- tlBooks %>%
+  inner_join(tlFootnotes,by="footnote")
+
+df%>%DataExplorer::profile_missing()%>%arrange(pct_missing)
+```
+
+## How to make a `Waffle`
+
+This is a little example from: [https://r-charts.com/part-whole/waffle-chart-ggplot2/](https://r-charts.com/part-whole/waffle-chart-ggplot2/)
+
+```{r eval=TRUE}
+# install.packages("waffle", repos = "https://cinc.rud.is")
+library(waffle)
+
+# Vector
+x <- c(30, 25, 20, 5)
+
+# Waffle chart
+waffle(x, rows = 8)
+```
+
+
+In this dataset there are three formats: book, episode and story
+```{r}
+df%>%
+  count(format)%>%
+  waffle(rows=20)
+```
+
+### Using `ggplot2`
+
+This `Waffle` is made of 12 different colors for identifying the `SSeries`. Here are used many colors from the `trekcolors` package for coloring the `series` of different colors. 
+
+```{r eval=TRUE}
+# install.packages("trekcolors")
+library(trekcolors)
+# trekcolors::lcars_colors()
+```
+
+
+The fonts are from the `trekfont` package.
+
+```{r eval=TRUE}
+# install.packages("trekfont")
+library(trekfont)
+# trekfont::show_trekfonts()
+library(showtext)
+font <- c("Khan", "StarNext", "FederationDS9Title", "Federation", "Klingon", "ModernVulcan", "TNGcast", "FederationStarfleet")
+path <- system.file(paste0("fonts/", font, ".ttf"), package = "trekfont")
+for(i in seq_along(font)) font_add(font[i], path[i])
+font_families()
+showtext_auto(enable = TRUE)
+```
+
+
+
+```{r eval=TRUE}
+df%>%
+  count(series)%>%
+  drop_na()%>%
+  # Waffle plot
+  ggplot(aes(fill = series, values = n)) +
+  geom_waffle(n_rows = 20, size = 0.5, colour = "white") +
+  scale_fill_manual(values =as.character(lcars_colors())) +
+  coord_equal() +
+  scale_x_continuous(expand = c(0, 0))+
+  labs(title="Star Trek Timelines Series",
+       caption="DataSource: #TidyTuesday 2022 week52 - Star Trek Timelines\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day2 - Waffle\n")+
+  theme_void()+
+  theme(text = element_text(family= "StarNext",size=14),
+        #legend.position = "bottom",
+        plot.title = element_text(size=50,hjust = 0.3),
+        plot.caption = element_text(size=20,hjust = 0.4,family="FederationDS9Title"),
+        panel.background = element_rect(fill="#9977AA",color="#9977AA"),
+        plot.background = element_rect(fill="#9977AA",color="#9977AA"))
+```
+
+```{r}
+ggsave("ss.png",
+       width = 6,height = 5.5,
+       bg="#9977AA",
+       dpi=200)
 ```
 
