@@ -23,7 +23,6 @@ library(tidyverse)
 library(fuzzyjoin)
 library(ggstream)
 library(colorspace)
-colorspace::
 ```
 
 Set the theme
