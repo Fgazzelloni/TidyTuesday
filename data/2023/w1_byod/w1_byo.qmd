@@ -1,0 +1,99 @@
+---
+title: "#TidyTuesday week1 2023 - BYO"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+            
+---
+
+
+[#TidyTuesday - Edition 2023](https://github.com/rfordatascience/tidytuesday/tree/master/data/2023)
+
+This time I'll use the `{oregonfrogs}` package.
+
+**Rana Pretiosa**, a rare species of frog, is found on various locations around **Crane Prairie Reservoir lake in Oregon**. Such as: pond, river, North, North East, South East, and West part of the Reservoir. 
+```{r}
+library(tidyverse)
+library(oregonfrogs)
+data("oregonfrogs")
+oregonfrogs::oregonfrogs %>% count(subsite)
+```
+
+Scientists monitoring the frogs have found interesting patterns in the density distribution between male and female frogs. Through the use of radio frequencies, they are able to track the movements of the frogs and study their behaviors. However, as their habitat is threatened, the scientists must race against time to protect the unique Rana Pretiosa population.
+
+
+```{r}
+oregonfrogs::oregonfrogs %>% head
+```
+
+```{r}
+oregonfrogs %>%
+  mutate(sex = as.factor(sex)) %>%
+  ggplot(aes(doy, detection, group = sex, color = sex)) +
+  geom_point() +
+  facet_wrap( ~ subsite)+
+  hrbrthemes::scale_color_ipsum()+
+  hrbrthemes::theme_tinyhand()
+```
+
+
+
+```{r}
+oregonfrogs%>%
+  mutate(sex=as.factor(sex),
+         subsite=case_when(subsite=="Cow Camp Pond"~"Pond",
+                           subsite=="Cow Camp Pond"~"Pond",
+                           TRUE~subsite))%>%
+  ggplot(aes(frequency,group=sex,color=sex))+
+  geom_density()+
+  facet_wrap(~subsite)
+```
+Let's have a look at the `ggplot2 extensions`: [https://exts.ggplot2.tidyverse.org/](https://exts.ggplot2.tidyverse.org/)
+
+```{r}
+library(hrbrthemes)
+hrbrthemes.loadfonts=TRUE
+hrbrthemes::import_tinyhand()
+hrbrthemes::import_roboto_condensed()
+extrafont::loadfonts()
+
+```
+
+
+```{r}
+oregonfrogs %>%
+  mutate(sex = as.factor(sex),
+         sex=ifelse(sex==0,"Female","Male"),
+         frequency=round(frequency,2)) %>%
+  ggplot(aes(frequency, group = sex, color = sex)) +
+  geom_density(linewidth=1,key_glyph = "point") +
+  facet_wrap( ~ subsite) +
+  coord_cartesian(clip = 'off')+
+  labs(title = "Oregonfrogs: Rana Pretiosa",
+       subtitle = "Located frogs by sex density distributions",
+       caption = "DataSource: #TidyTuesday 2023 week1 - BYO data: Oregonfrogs\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day3 - fauna/flora\n") +
+  hrbrthemes::scale_color_ipsum() +
+  hrbrthemes::theme_tinyhand(strip_text_size = 9,
+                             plot_title_size = 13,
+                             subtitle_size = 7,
+                             subtitle_margin = 5,
+                             caption_margin = 7,
+                             caption_family = "Roboto Condensed",
+                             axis_title_size = 9,
+                             axis_text_size = 7,
+                             plot_margin = margin(10, 10, 10, 10))
+```
+
+
+
+```{r}
+
+
+ggsave("density.png")
+```
+
+
