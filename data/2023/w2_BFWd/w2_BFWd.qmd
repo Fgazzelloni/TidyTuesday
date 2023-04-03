@@ -1,0 +1,154 @@
+---
+title: TidyTuesday 2023 w2 Bird FeederWatch data
+author: Federica Gazzelloni
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+Resources: 
+
+- [https://github.com/rfordatascience/tidytuesday/tree/master/data/2023/2023-01-10](https://github.com/rfordatascience/tidytuesday/tree/master/data/2023/2023-01-10)
+- [https://feederwatch.org/explore/raw-dataset-requests/](https://feederwatch.org/explore/raw-dataset-requests/)
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2023, week = 02)
+```
+
+```{r}
+tuesdata$PFW_2021_public%>%head
+```
+
+
+```{r}
+tuesdata$PFW_count_site_data_public_2021%>%head
+```
+
+```{r}
+d <- tuesdata$PFW_2021_public %>% janitor::clean_names()
+
+
+d%>% 
+  count(year)
+```
+
+```{r}
+world <- map_data("world")
+states <- map_data("state")
+
+prop_df <- d %>%
+  filter(longitude < -50) %>%
+  group_by(longitude, latitude, year) %>%
+  reframe(prop_many = how_many / sum(how_many) * 100)
+
+
+ggplot(data = world, mapping = aes(long, lat, group = group)) +
+  geom_polygon(color = "grey", fill = NA) +
+  geom_polygon(data = states,
+               linewidth=0.1,
+               color = "grey",
+               fill = NA) +
+  geom_point(
+    data = prop_df,
+    mapping = aes(x = longitude, y = latitude, fill = factor(year)),
+    inherit.aes = FALSE,
+    key_glyph = "rect",
+    size=0.5,
+    shape = 21,
+    stroke = 0.3,
+    color = "black"
+  ) +
+  scale_fill_manual(values=c("#fc1c3c","#9189c1"))+
+  coord_sf(xlim = c(-157.94932, -50),
+           ylim = c(20 , 65.51989)) +
+  #facet_wrap(vars(year),nrow = 2) +
+  labs(title = "Maximum number of individuals seen at one time during observation period",
+       subtitle="total proportion (%)",
+       caption="DataSource: #TidyTuesday 2023 week2 - BFW data\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day4 - historical\n",
+       fill = "Year") +
+  ggthemes::theme_map(base_size = 10, base_family = "Roboto Condensed") +
+  theme(plot.background = element_rect(color="black",fill="black"),
+        panel.background = element_rect(color="black",fill="black"),
+        plot.title = element_text(color="#9189c1",size=14),
+        plot.subtitle = element_text(color="#9189c1",size=12),
+        plot.caption = element_text(color="#fc1c3c"),
+        legend.position = c(0.85,0.1))
+```
+
+```{r}
+ggsave("images/map.png",
+       width = 7,height = 4)
+```
+
+```{r}
+d%>%count(species_code,sort=TRUE)
+```
+
+
+
+```{r}
+library(fpp3)
+data <- d %>%
+  mutate(date=paste0(month,"-",day,"-",year),.after =obs_id )%>%
+  mutate(date=as.Date(date,"%m-%d-%Y"))%>%
+  select(year,month,day,date,how_many)%>%
+  distinct()%>%
+  group_by(date)%>%
+  reframe(how_many=sum(how_many))
+
+ts <- data%>%
+  as_tsibble()
+
+ts %>%
+  #autoplot()
+  gg_season(y = how_many,period = "week")+
+  scale_colour_steps2() +
+  labs(title="Feeder Birds seasonality",
+       subtitle="Exploring Daily Seasonal Patterns of Feeder Bird Sightings",
+       y="number of individuals seen",x="Day of the week (2020-2021)" )+
+  theme_linedraw(base_size = 12,
+                 base_family = "Roboto Condensed")+
+  theme(plot.title = element_text(size=18),
+        plot.subtitle = element_text(size=14))
+```
+
+```{r}
+ggsave("images/daily.png",width = 7,height = 4)
+```
+
+```{r}
+ts %>%
+  autoplot()+
+  scale_colour_steps2() +
+  labs(title="Feeder Birds seasonality",
+       subtitle="Exploring Monthly Seasonal Patterns of Feeder Bird Sightings",
+       y="number of individuals seen",x="Months (2020-2021)" )+
+  theme_linedraw(base_size = 12,
+                 base_family = "Roboto Condensed")+
+  theme(plot.title = element_text(size=18),
+        plot.subtitle = element_text(size=14))
+```
+
+```{r}
+ggsave("images/monthly.png",width = 7,height = 4)
+```
+
+
+
+```{r}
+library(cowplot)
+
+ggdraw()+
+  draw_image("images/map.png")+
+  draw_image("images/daily.png",scale = 0.25,x=-0.36,y=-0)+
+  draw_image("images/monthly.png",scale = 0.25,x=-0.36,y=-0.27)+
+  draw_label("Map of locations from which Project FeederWatch participants have submitted data\nbetween 2020 and 2021. The inset plots provides detail of an example of seasonality.",x=0.02,y=0.07,size=6,color="grey",fontfamily = "Roboto Condensed",hjust = 0)
+```
+```{r}
+ggsave("full.png",width = 7,height = 4,dpi=320)
+```
+
