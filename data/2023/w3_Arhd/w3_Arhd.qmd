@@ -1,9 +1,124 @@
 ---
-title: TidyTuesday 2023 w3 Art history data
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w3 Art history data"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
+
+Looking at making **slopes** for the **#30DayCahrtChallenge 2023 - day 5**
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 03)
 ```
+
+```{r}
+artists <- tuesdata$artists
+artists%>%head
+```
+
+```{r}
+artists%>%DataExplorer::profile_missing()%>%arrange(-pct_missing)
+```
+
+
+
+413 Artistis,
+
+```{r}
+ggplot(artists)+
+  geom_point(aes(x = artist_unique_id,y=artist_nationality))+
+  facet_wrap(~artist_race)
+```
+
+```{r}
+ggplot(artists,aes(x = year, y = space_ratio_per_page_total, group = artist_unique_id)) +
+  geom_line()+
+  facet_wrap(~artist_gender)
+```
+
+```{r}
+artists %>%
+  filter(artist_gender=="Female") %>%
+ggplot(aes(x = year, y = space_ratio_per_page_total, group = artist_unique_id)) +
+  geom_line()+
+  facet_wrap(~artist_nationality)
+```
+
+```{r}
+artists %>%
+  filter(artist_gender=="Female",
+         artist_nationality=="French",
+         artist_race=="White") %>%
+ggplot(aes(x = year, y = space_ratio_per_page_total, group = artist_unique_id)) +
+  geom_line()+
+  facet_wrap(~book)
+```
+
+
+**Giorgio de Chirico** space_ratio_per_page_total along the time.
+
+```{r}
+artists%>%
+  filter(artist_name=="Giorgio de Chirico") %>%
+  ggplot(
+       aes(x = year, y = space_ratio_per_page_total, group = artist_unique_id)) +
+  geom_point()+
+  geom_smooth(method = "lm")
+  geom_abline(slope=-0.000050,intercept = mean(artists$space_ratio_per_page_total))
+```
+
+```{r}
+ggplot(artists,
+       aes(x = year, y = space_ratio_per_page_total, group = artist_unique_id)) +
+  geom_line()+
+  facet_wrap(vars(artist_nationality))
+```
+
+```{r}
+artists%>%
+  filter(artist_nationality=="Italian")%>%#count(year)
+  mutate(year=as.integer(year)) %>%
+ggplot(
+       aes(x = year, y = space_ratio_per_page_total, 
+           group = artist_name,
+           fill=artist_name,
+           color=artist_name,
+           label=artist_name)) +
+  geom_point(shape=21,
+             stroke=0.5,
+             alpha=0.5,
+             show.legend = FALSE)+
+  geomtextpath::geom_textsmooth(method = "lm",
+                                se=FALSE,
+                                family="Roboto Condensed",
+                                show.legend = FALSE)+
+  scale_color_viridis_d()+
+  scale_x_continuous(limits = c(1945,2035),n.breaks = 5,expand = c(0,0))+
+  facet_wrap(~book,scales = "free") +
+  labs(y="Space Ratio per Page Total",
+       x="Year",
+       title="Male Italian Artists",
+       subtitle="how much space their work took up in each textbook",
+       caption = "DataSource: #TidyTuesday 2023 week3 Art history\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day5 - slope\n")+
+  hrbrthemes::theme_ipsum_rc(plot_title_size = 28,
+                             caption_face = "bold",
+                             caption_family = "Roboto Condensed",
+                             base_family = "Roboto Condensed"
+                              )+
+    theme(strip.background = element_blank(),
+          strip.placement = "outside",
+          strip.clip = "off",
+          strip.text = element_text(hjust=0.5,size=20),
+          plot.margin = unit(c(5,10,5,5),units = "pt"))
+```
+```{r}
+ggsave("w3_Arhd.png",
+       bg="white",
+       width = 9,height = 5)
+```
+

@@ -1,6 +1,6 @@
 ---
-title: TidyTuesday 2023 w2 Bird FeederWatch data
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w2 Bird FeederWatch data"
+author: "Federica Gazzelloni"
 execute:  
   comments: ""
   eval: true
