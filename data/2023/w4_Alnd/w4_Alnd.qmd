@@ -26,5 +26,136 @@ seasons <- tuesdata$seasons
 ```{r}
 survivalists%>%head
 ```
+```{r}
+episodes <- episodes%>%
+  select(season,air_date,viewers)
+```
 
+
+```{r}
+viewers <- seasons%>%
+  select(lon,lat,location,country,n_survivors,season)%>%
+  inner_join(survivalists,by=c("season","country"))%>%
+  inner_join(episodes,by=c("season"))%>%
+  select(age,n_survivors,viewers,air_date,location,country,city,state)%>%
+  # select(lon,lat,location,country,city,state,
+  #        name,age,gender,profession,n_survivors,season,
+  #        air_date,viewers)%>%
+  distinct()%>%#DataExplorer::profile_missing()
+  drop_na()
+viewers
+```
+
+
+
+```{r}
+library(owidR)
+# df <- owidR::owid_covid()
+# save(df,file="df.RData")
+
+df_short <- df%>%
+  select(continent,country=location,
+         date,total_cases,median_age,life_expectancy)%>%
+  filter(country=="Canada")
+
+
+```
+
+```{r}
+df_short%>%count(country)
+viewers%>%count(country)
+```
+```{r}
+viewers%>%
+  inner_join(df_short%>%filter(country=="Canada"),
+             by=c("air_date"="date","country"))%>%
+  select(air_date,n_survivors,viewers,total_cases,median_age,age)%>%
+  #filter(!is.na(total_cases))%>%
+  distinct()%>%
+  count(air_date)
+```
+
+
+```{r}
+my_df <- viewers%>%
+  inner_join(df_short%>%filter(country=="Canada"),
+             by=c("air_date"="date","country"))%>%
+  select(n_survivors,viewers,total_cases,median_age,age)%>%
+  distinct() %>%
+  scale()%>%
+  as.data.frame()%>%
+  select(viewers,total_cases)
+my_df
+```
+
+
+```{r}
+v <- my_df$viewers
+c <- my_df$total_cases
+cor(v,c)
+```
+
+```{r}
+my_df%>%
+  ggplot()+
+  geom_density(aes(viewers))+
+  geom_density(aes(total_cases),color="red")
+```
+
+
+```{r}
+library(tidyverse)
+library(ggdist)
+library(distributional)
+library(extrafont)
+library(showtext)
+showtext_auto()
+sysfonts::font_add_google(name="Chelsea Market",
+                          family="Chelsea Market")
+
+
+my_df%>%
+  pivot_longer(cols = everything(), 
+               names_to = "type" ,values_to = "values")%>%
+  mutate(type=ifelse(type=="viewers",
+                     "TV series Alone - Viewers",
+                     "OWId Covid19 Total Cases in Canada"))%>%
+  ggplot(aes(y=type,x=values,
+             #xdist=dist_normal(values, sd(values)),
+         #xdist = dist_normal(0, 1),
+         layout = "weave",
+         fill = stat(x > 0)))+
+  stat_dots(aes(xdist = dist_normal(0, 1)))+
+  ggnewscale::new_scale_fill()+
+  stat_dist_slabinterval(aes(x=values),alpha=0.8)+
+  geom_vline(xintercept = 0, alpha = 0.25) +
+   tvthemes::scale_fill_hilda()+
+  labs(title="Canada: TV Series ALONE Viewers and OWId Covid19 Total Cases",
+       subtitle="Distributions of standardized values",
+       caption = "Correlation doesn't imply causation! These are 11 weeks of Covid-19 (2020-06-11 - 2020-08-20) and ALONE Viewers\nDataSource: #TidyTuesday 2023 week4 Alone data\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day6 - OWId\n")+
+  tvthemes::theme_avatar(text.font = "Chelsea Market")+
+  theme(text=element_text(),
+        plot.title = element_text(hjust = 1),
+        plot.caption = element_text(hjust = 1),
+        legend.position = "none",
+        axis.title = element_blank())
+```
+
+
+
+```{r}
+my_df%>%
+  mutate(day=seq_along(1:11))%>%
+  pivot_longer(cols = c("viewers","total_cases"), 
+               names_to = "type" ,values_to = "values")%>%
+  mutate(type=ifelse(type=="viewers",
+                     "TV series Alone - Viewers",
+                     "OWId Covid19 Total Cases in Canada"))%>%
+  ggplot(aes(x=day,y=values,group=type,color=type))+
+    geom_line()+
+  geom_smooth(method = "lm",se=F)+
+  tvthemes::scale_color_hilda()+
+  theme_bw()+
+  theme(legend.position = "top")
+```
 
