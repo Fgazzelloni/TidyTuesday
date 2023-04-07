@@ -1,6 +1,12 @@
 ---
-title: TidyTuesday 2023 w7 Hollywood Age Gaps
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w7 Hollywood Age Gaps"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}

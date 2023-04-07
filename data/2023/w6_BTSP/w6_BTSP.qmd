@@ -1,9 +1,85 @@
 ---
-title: TidyTuesday 2023 w6 Big Tech Stock Prices
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w6 Big Tech Stock Prices"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 06)
 ```
+
+```{r}
+big_tech_stock_prices <- tuesdata$big_tech_stock_prices
+big_tech_companies <- tuesdata$big_tech_companies
+```
+
+
+```{r}
+df <- big_tech_stock_prices%>%
+  inner_join(big_tech_companies,by="stock_symbol")
+```
+
+```{r}
+df%>%head
+```
+
+
+HUMAN THEME
+
+```{r}
+library(ggplot2)
+
+# Create example data
+big_tech_stock_prices <- data.frame(
+  date = seq(as.Date("2021-01-01"), as.Date("2021-12-31"), by = "day"),
+  apple = rnorm(365, mean = 140, sd = 10),
+  amazon = rnorm(365, mean = 3200, sd = 100),
+  facebook = rnorm(365, mean = 350, sd = 20),
+  google = rnorm(365, mean = 2500, sd = 50)
+)
+
+# Create ggplot with human theme
+ggplot(big_tech_stock_prices, aes(x = date)) +
+  geom_line(aes(y = apple, color = "Apple")) +
+  geom_line(aes(y = amazon, color = "Amazon")) +
+  geom_line(aes(y = facebook, color = "Facebook")) +
+  geom_line(aes(y = google, color = "Google")) +
+  scale_color_manual(values = c("Apple" = "#A9A9A9", "Amazon" = "#FFA500", "Facebook" = "#4169E1", "Google" = "#008000")) +
+  labs(title = "Big Tech Stock Prices", x = "Date", y = "Stock Price") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", margin = margin(b = 20)),
+    axis.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 14),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 14),
+    legend.position = "bottom"
+  )
+
+```
+
+```{r}
+my_companies<- c("Apple Inc.","Microsoft Corporation","Netflix, Inc.", "Tesla, Inc.")
+
+df %>% filter(company%in%my_companies)%>%
+ggplot(aes(x = date)) +
+  geom_line(aes(y = log10(volume), group=company )) 
+  scale_color_manual(values = c("Apple" = "#A9A9A9", "Amazon" = "#FFA500", "Facebook" = "#4169E1", "Google" = "#008000")) +
+  labs(title = "Big Tech Stock Prices", x = "Date", y = "Stock Price") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", margin = margin(b = 20)),
+    axis.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 14),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 14),
+    legend.position = "bottom"
+  )
+```
+
