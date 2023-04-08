@@ -7,6 +7,7 @@ execute:
   echo: true
   warning: false
   message: false
+  cache: true
 ---
 
 ```{r}
@@ -67,19 +68,48 @@ ggplot(big_tech_stock_prices, aes(x = date)) +
 ```{r}
 my_companies<- c("Apple Inc.","Microsoft Corporation","Netflix, Inc.", "Tesla, Inc.")
 
-df %>% filter(company%in%my_companies)%>%
-ggplot(aes(x = date)) +
-  geom_line(aes(y = log10(volume), group=company )) 
-  scale_color_manual(values = c("Apple" = "#A9A9A9", "Amazon" = "#FFA500", "Facebook" = "#4169E1", "Google" = "#008000")) +
-  labs(title = "Big Tech Stock Prices", x = "Date", y = "Stock Price") +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(size = 20, face = "bold", margin = margin(b = 20)),
+library(scales)
+df %>% 
+  filter(company%in%my_companies)%>%
+  select(date,volume,company)%>%
+  group_by(company)%>%
+  mutate(mean=mean(volume,na.rm = TRUE),
+         sd=sd(volume,na.rm = TRUE))%>%
+  ggplot(aes(x = date)) +
+  geom_hline(aes(yintercept=mean,color=company),linewidth=0.3)+
+  geom_line(aes(y = volume, group=company, color=company),
+            linewidth=0.1,key_glyph="timeseries") +
+  scale_y_log10(expand=c(0,0),labels = label_number(scale_cut = cut_short_scale()))+
+  scale_x_date(expand = c(0,0))+
+  scale_color_manual(values = c("Apple Inc." = "#0071bc",
+                                "Microsoft Corporation" = "#FFA500", 
+                                "Netflix, Inc." = "#fff1e0", 
+                                "Tesla, Inc." = "#c15a4f")) +
+  guides(color=guide_legend(nrow = 2))+
+  labs(title = "Big Tech Stock Prices", y = "Stock Price",
+       subtitle="Humans activity - Best Companies Mean Trend",
+       caption="\nDataSource: #TidyTuesday 2023 week6 Big Tech Stock Prices\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day8 - humans\n") +
+  ggthemes::theme_economist()+
+  theme(text = element_text(family="Roboto Condensed",color="#250c5f"),
+    plot.title = element_text(size = 25, face = "bold", margin = margin(b = 20)),
+    plot.background = element_rect(color="#89a5b9",fill="#89a5b9"),
+    panel.background = element_rect(color="#89a5b9",fill="#89a5b9"),
     axis.title = element_text(size = 16, face = "bold"),
-    axis.text = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    axis.title.x = element_blank(),
+    legend.key.size = unit(15,units = "pt"),
+    #legend.key.width = unit(15,units = "pt"),
     legend.title = element_blank(),
-    legend.text = element_text(size = 14),
-    legend.position = "bottom"
+    legend.box.background = element_rect(color="#250c5f",fill="#250c5f"),
+    legend.text = element_text(size = 11,color="white"),
+    legend.position = "bottom",
+    panel.grid = element_line(linewidth=0.0),
+    axis.line.y = element_line(),
+    axis.text.y = element_text(hjust=1)
   )
+```
+```{r}
+ggsave("w6_BTSP.png",
+       width = 7,height = 5)
 ```
 

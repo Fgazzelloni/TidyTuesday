@@ -356,6 +356,8 @@ last_rf_fit %>%
   vip(num_features = 20,
       mapping = aes_string(fill = "Variable")) 
 ```
+
+
 ```{r}
 backward<-last_rf_fit %>% 
   extract_fit_parsnip()
