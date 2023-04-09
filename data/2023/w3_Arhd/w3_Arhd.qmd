@@ -104,7 +104,7 @@ ggplot(
        x="Year",
        title="Male Italian Artists",
        subtitle="how much space their work took up in each textbook",
-       caption = "DataSource: #TidyTuesday 2023 week3 Art history\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day5 - slope\n")+
+       caption = "DataSource: #TidyTuesday 2023 week3 Art history\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day5 - slope\n")+
   hrbrthemes::theme_ipsum_rc(plot_title_size = 28,
                              caption_face = "bold",
                              caption_family = "Roboto Condensed",

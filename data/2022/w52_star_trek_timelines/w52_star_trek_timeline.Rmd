@@ -100,21 +100,25 @@ showtext_auto(enable = TRUE)
 
 
 ```{r eval=TRUE}
+library(waffle)
 df%>%
   count(series)%>%
   drop_na()%>%
-  # Waffle plot
-  ggplot(aes(fill = series, values = n)) +
-  geom_waffle(n_rows = 20, size = 0.5, colour = "white") +
+  waffle(rows = 20, size = 0.5)+
   scale_fill_manual(values =as.character(lcars_colors())) +
+  # Waffle plot
+  #ggplot(aes(fill = series, values = n)) +
+  #geom_waffle(n_rows = 20, size = 0.5, colour = "white") +
+  #scale_fill_manual(values =as.character(lcars_colors())) +
   coord_equal() +
   scale_x_continuous(expand = c(0, 0))+
   labs(title="Star Trek Timelines Series",
-       caption="DataSource: #TidyTuesday 2022 week52 - Star Trek Timelines\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day2 - Waffle\n")+
+       subtitle = "",
+       caption="DataSource: #TidyTuesday 2022 week52 - Star Trek Timelines\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day2 - Waffle\n")+
   theme_void()+
   theme(text = element_text(family= "StarNext",size=14),
         #legend.position = "bottom",
-        plot.title = element_text(size=50,hjust = 0.3),
+        plot.title = element_text(size=50,hjust = 0.3,vjust = 0),
         plot.caption = element_text(size=20,hjust = 0.4,family="FederationDS9Title"),
         panel.background = element_rect(fill="#9977AA",color="#9977AA"),
         plot.background = element_rect(fill="#9977AA",color="#9977AA"))

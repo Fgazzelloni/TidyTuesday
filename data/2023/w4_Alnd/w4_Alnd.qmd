@@ -52,7 +52,7 @@ viewers
 library(owidR)
 # df <- owidR::owid_covid()
 # save(df,file="df.RData")
-
+load("df.RData")
 df_short <- df%>%
   select(continent,country=location,
          date,total_cases,median_age,life_expectancy)%>%
@@ -132,7 +132,7 @@ my_df%>%
    tvthemes::scale_fill_hilda()+
   labs(title="Canada: TV Series ALONE Viewers and OWId Covid19 Total Cases",
        subtitle="Distributions of standardized values",
-       caption = "Correlation doesn't imply causation! These are 11 weeks of Covid-19 (2020-06-11 - 2020-08-20) and ALONE Viewers\nDataSource: #TidyTuesday 2023 week4 Alone data\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day6 - OWId\n")+
+       caption = "Correlation doesn't imply causation! These are 11 weeks of Covid-19 (2020-06-11 - 2020-08-20) and ALONE Viewers\nDataSource: #TidyTuesday 2023 week4 Alone data\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day6 - OWId\n")+
   tvthemes::theme_avatar(text.font = "Chelsea Market")+
   theme(text=element_text(),
         plot.title = element_text(hjust = 1),

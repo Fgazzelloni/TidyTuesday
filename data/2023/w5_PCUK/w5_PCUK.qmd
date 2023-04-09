@@ -67,7 +67,7 @@ ggsurv <- ggsurvplot(fit,
                 censor.size = 4,
                 risk.table = TRUE,
                 submain = "Hazards Distribution and Sex Differences in Hunting Risk",
-                caption = "Based on Kaplan-Meier estimates\nDataSource: #TidyTuesday 2023 Week5 Pet Cats UK\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day7 - hazards\n") 
+                caption = "Based on Kaplan-Meier estimates\nDataSource: #TidyTuesday 2023 Week5 Pet Cats UK\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day7 - hazards\n") 
 
 ggsurv$plot %+%
   ggthemes::scale_colour_fivethirtyeight(labels=c("Male","Female")) %+%
@@ -87,6 +87,7 @@ ggsurv$plot %+%
 
 
 ```{r}
+showtext.auto(enable = FALSE)
 ggsave("w5_PCUK.png",
        width = 7,height = 5)
 ```

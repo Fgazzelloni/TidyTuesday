@@ -75,7 +75,7 @@ oregonfrogs %>%
   coord_cartesian(clip = 'off')+
   labs(title = "Oregonfrogs: Rana Pretiosa",
        subtitle = "Located frogs by sex density distributions",
-       caption = "DataSource: #TidyTuesday 2023 week1 - BYO data: Oregonfrogs\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day3 - fauna/flora\n") +
+       caption = "DataSource: #TidyTuesday 2023 week1 - BYO data: Oregonfrogs\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day3 - fauna/flora\n") +
   hrbrthemes::scale_color_ipsum() +
   hrbrthemes::theme_tinyhand(strip_text_size = 9,
                              plot_title_size = 13,
@@ -91,9 +91,7 @@ oregonfrogs %>%
 
 
 ```{r}
-
-
-ggsave("density.png")
+ggsave("w1_byo.png")
 ```
 
 

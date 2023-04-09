@@ -68,7 +68,7 @@ ggplot(data = world, mapping = aes(long, lat, group = group)) +
   #facet_wrap(vars(year),nrow = 2) +
   labs(title = "Maximum number of individuals seen at one time during observation period",
        subtitle="total proportion (%)",
-       caption="DataSource: #TidyTuesday 2023 week2 - BFW data\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day4 - historical\n",
+       caption="DataSource: #TidyTuesday 2023 week2 - BFW data\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day4 - historical\n",
        fill = "Year") +
   ggthemes::theme_map(base_size = 10, base_family = "Roboto Condensed") +
   theme(plot.background = element_rect(color="black",fill="black"),
@@ -149,6 +149,6 @@ ggdraw()+
   draw_label("Map of locations from which Project FeederWatch participants have submitted data\nbetween 2020 and 2021. The inset plots provides detail of an example of seasonality.",x=0.02,y=0.07,size=6,color="grey",fontfamily = "Roboto Condensed",hjust = 0)
 ```
 ```{r}
-ggsave("full.png",width = 7,height = 4,dpi=320)
+ggsave("w2_BFWd.png",width = 7,height = 4,dpi=320)
 ```
 

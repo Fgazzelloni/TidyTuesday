@@ -13,3 +13,57 @@ execute:
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 07)
 ```
+
+
+```{r}
+age_gaps <- tuesdata$age_gaps
+age_gaps%>%head
+```
+
+```{r}
+age_gaps%>%names
+```
+
+
+```{r}
+age_gaps%>%dim
+```
+
+
+
+```{r}
+
+library(geomtextpath)
+
+age_gaps%>%
+  group_by(movie_name)%>%
+  mutate(avg=mean(age_difference))%>%
+  pivot_longer(cols = c("character_1_gender","character_2_gender"),names_to = "type",values_to = "gender") %>%
+  mutate(type=ifelse(type=="character_1_gender","First Character Gender","Second Character Gender")) %>%
+  ggplot(aes(avg,fill=gender))+
+  geom_histogram()+
+  facet_wrap(~type)+
+  tvthemes::scale_fill_brooklyn99(reverse=FALSE)+
+  labs(title="Hollywood Age Gaps",
+       subtitle="Age difference - Avg values",
+       caption="\nDataSource: #TidyTuesday 2023 Week7 Hollywood Age Gaps\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day9 - high/low\n",x="",y="Count")+
+  tvthemes::theme_brooklyn99(text.font="Roboto Condensed")+
+  theme(panel.grid = element_line(linetype="dashed",linewidth = 0.2),
+        strip.text = element_text(face="bold"))+
+    annotate(
+    "textsegment",
+    x=60,xend=20,y=150,yend=70, 
+    label = "high/low", arrow = arrow(length = unit(5,units = "pt"))
+  )
+
+```
+
+```{r}
+ggsave("w7_HIAG.png",
+       width = 7,height = 5)
+```
+
+
+
+
+

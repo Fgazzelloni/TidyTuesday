@@ -19,17 +19,16 @@ The amount of annual precipitation is closely related to the monthly temperature
 Throughout the year, different regions experience different temperature changes during each month. Generally, in areas with a cold winter season, monthly temperatures tend to be lower, while areas with a warm tropical climate can have higher temperatures year-round. As temperatures increase, the evaporation rate also increases, leading to more moisture in the atmosphere. This increased moisture can result in higher precipitation levels.
 
 In summary, the relationship between annual precipitation and monthly temperatures is a part-to-whole connection because it involves the overall amount of precipitation throughout the year being impacted by the individual temperature conditions of each month. Monthly temperature patterns are a crucial component in understanding and predicting the amount of precipitation and the ecological systems that depend on it.
+
 ```{r}
 tuesdata <- tidytuesdayR::tt_load(2022, week = 51)
 ```
-
 
 ```{r eval=TRUE}
 library(tidyverse)
 library(maps)
 library(mapdata)
 ```
-
 
 ```{r}
 weather_forecasts <- tuesdata$weather_forecasts
@@ -57,7 +56,6 @@ load("data/df.RData")
 df%>%names
 ```
 
-
 ```{r eval=TRUE}
 df_mean <- df%>%
   mutate(ymon=zoo::as.yearmon(date),.after=date)%>% # DataExplorer::profile_missing()
@@ -77,8 +75,6 @@ df_mean <- df%>%
 df_mean <- df_mean%>%
   mutate(year=year(ymon),.after = ymon)
 ```
-
-
 
 ```{r eval=TRUE}
 state<- map_data("state")
@@ -102,7 +98,6 @@ df_mean_full <- states_full%>%
   inner_join(df_mean,by=c("abbr"="state"))%>%
   distinct()
 ```
-
 
 ```{r eval=TRUE}
 map <- df_mean_full%>%
@@ -128,9 +123,9 @@ map <- df_mean_full%>%
     inherit.aes = FALSE
   ) +
   coord_quickmap()+
-   labs(title = "#30DayMapChallenge 2023 Day1 - Part to whole",
+   labs(title = "#30DayChartChallenge 2023 Day1 - Part to whole",
        subtitle = "Comparing Weather Forecasting Accuracy in the United States",
-       caption="DataSource: #TidyTuesday 2022 week51|Weather Forecast Accuracy\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day1",
+       caption="DataSource: #TidyTuesday 2022 week51|Weather Forecast Accuracy\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day1",
        fill="AVG Annual Precip") +
   theme(panel.background = element_rect(color = "black", fill = "#dedede"),
         axis.title = element_blank(),
@@ -143,10 +138,10 @@ map
 ```
 
 ```{r}
+showtext.auto(enable = FALSE)
 ggsave("map.png",
        width = 7,height = 5)
 ```
-
 
 ```{r}
 df_mean%>%
@@ -162,7 +157,6 @@ df_mean%>%
          ymon=="Jan 2021")%>%
   arrange(-observed_temp)
 ```
-
 
 ```{r eval=TRUE}
 p <- df_mean%>%
@@ -186,7 +180,6 @@ p <- df_mean%>%
 p
 ```
 
-
 ```{r}
 ggsave("p.png",
        width = 7,height = 5)
@@ -194,15 +187,11 @@ ggsave("p.png",
 
 
 
-```{r}
-ggsave(map,"map.png")
-```
-
 ```{r eval=TRUE}
 library(cowplot)
 
 ggdraw()+
-  draw_image("images/map.png")+
+  draw_image("map.png")+
   draw_image("images/p.png",
              scale=0.35,
             x=0.3,y=0.3)+
@@ -213,4 +202,3 @@ ggdraw()+
 ```{r}
 ggsave("full.png",width = 7,height = 5)
 ```
-

@@ -79,16 +79,17 @@ df %>%
   geom_hline(aes(yintercept=mean,color=company),linewidth=0.3)+
   geom_line(aes(y = volume, group=company, color=company),
             linewidth=0.1,key_glyph="timeseries") +
-  scale_y_log10(expand=c(0,0),labels = label_number(scale_cut = cut_short_scale()))+
+  scale_y_log10(expand=c(0,0),
+                labels = label_number(scale_cut = cut_short_scale()))+
   scale_x_date(expand = c(0,0))+
   scale_color_manual(values = c("Apple Inc." = "#0071bc",
                                 "Microsoft Corporation" = "#FFA500", 
                                 "Netflix, Inc." = "#fff1e0", 
                                 "Tesla, Inc." = "#c15a4f")) +
   guides(color=guide_legend(nrow = 2))+
-  labs(title = "Big Tech Stock Prices", y = "Stock Price",
+  labs(title = "Big Tech Stock Prices", y = "Stock Price Volume",
        subtitle="Humans activity - Best Companies Mean Trend",
-       caption="\nDataSource: #TidyTuesday 2023 week6 Big Tech Stock Prices\nDataViz: Federica Gazzelloni #30DayMapChallenge 2023 Day8 - humans\n") +
+       caption="\nDataSource: #TidyTuesday 2023 week6 Big Tech Stock Prices\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day8 - humans\n") +
   ggthemes::theme_economist()+
   theme(text = element_text(family="Roboto Condensed",color="#250c5f"),
     plot.title = element_text(size = 25, face = "bold", margin = margin(b = 20)),
