@@ -1,9 +1,64 @@
 ---
-title: TidyTuesday 2023 w8 Bob Ross Paintings
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w8 Bob Ross Paintings"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 08)
 ```
+
+## Bob Ross Paintings ---> HIBRID - DAY 10
+
+```{r}
+bob_ross <- tuesdata$bob_ross
+bob_ross%>% names
+```
+
+```{r}
+df <- bob_ross%>%
+  pivot_longer(cols=10:27,names_to = "color",values_to = "values")%>%
+  select(color_hex,painting_index,painting_title,num_colors,color,season,episode)%>%
+  distinct()
+
+```
+
+
+
+### A hybrid boxplot
+
+```{r}
+library(showtext)
+# sysfonts::font_families_google()
+sysfonts::font_add_google("Aclonica","Aclonica")
+sysfonts::font_add_google("Alegreya Sans", "aleg")
+```
+
+```{r}
+# ?ggpol::geom_boxjitter()
+library(ggpol)
+set.seed(221)
+showtext_auto()
+df%>%
+  filter(color%in%c("Black_Gesso","Burnt_Umber","Dark_Sienna"))%>%
+  group_by(color)%>%
+  ggplot(aes(x=painting_index,y=num_colors,group=color))+
+  geom_boxjitter(aes(fill = color),
+                 jitter.shape = 21, jitter.color = NA,
+                 outlier.color = NA, errorbar.draw = TRUE) +
+  scale_fill_manual(values = c("#000000", "#8A3324", "#5F2E1F")) +
+  labs(title="Bob Ross Hybrid Color Paintings Variation",
+       subtitle="",
+       caption="DataSource: #TidyTuesday 2023 Week8 Bob Ross Paintings\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day10 - hybrid",
+       x="Painting index",y="Variety of colors in the Painting",
+       fill="Color")+
+  theme_minimal()+
+  theme(text = element_text(family = "aleg"))
+```
+

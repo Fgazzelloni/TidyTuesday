@@ -1,9 +1,71 @@
 ---
-title: TidyTuesday 2023 w9 African Language Sentiment
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w9 African Language Sentiment"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 09)
 ```
+
+
+
+
+```{r}
+afrisenti <- tuesdata$afrisenti
+languages <- tuesdata$languages
+
+
+
+language_scripts <- tuesdata$language_scripts
+language_countries <- tuesdata$language_countries
+country_regions <- tuesdata$country_regions
+```
+
+
+```{r}
+afrisenti%>%count(label)
+```
+
+
+```{r}
+library(showtext)
+sysfonts::font_families_google()
+sysfonts::font_add_google("Explora","Explora")
+```
+
+```{r}
+showtext.auto()
+afrisenti%>%
+  inner_join(languages,by="language_iso_code")%>%
+  count(label,intended_use,language) %>%
+  ggplot(aes(label,n,fill=intended_use))+
+  geom_col()+
+  coord_polar(theta = "x")+
+  labs(title="African Language Sentiment",
+       caption="DataSource: #TidyTuesday 2023 week9 African Language Sentiment\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day11 - Circular",
+       fill="Inteded use")+
+scale_fill_manual(values = c("#CF3721", "#31A9B8", "#258039")) +
+  theme_minimal()+
+  theme(text=element_text(family="Explora",size=50),
+        panel.grid = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title = element_blank())+
+  facet_wrap(~language)
+
+```
+
+```{r}
+
+ggsave("p.png",width = 9,height = 10,
+       device = "png",dpi=300,bg="white")
+```
+
+
+
