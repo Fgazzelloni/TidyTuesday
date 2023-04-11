@@ -36,36 +36,49 @@ afrisenti%>%count(label)
 
 ```{r}
 library(showtext)
-sysfonts::font_families_google()
+#sysfonts::font_families_google()
 sysfonts::font_add_google("Explora","Explora")
+showtext_auto()
 ```
 
+
+
 ```{r}
-showtext.auto()
-afrisenti%>%
+df_plot <- afrisenti%>%
   inner_join(languages,by="language_iso_code")%>%
-  count(label,intended_use,language) %>%
-  ggplot(aes(label,n,fill=intended_use))+
-  geom_col()+
-  coord_polar(theta = "x")+
+  count(label,intended_use,language) 
+
+
+  ggplot(data = df_plot, mapping = aes(label,n,fill=intended_use))+
+  geom_col(width = 0.5) 
+    coord_polar(theta = "y",
+              start = 0,
+              direction = 1, 
+              clip = "off") +
+  #scale_x_(clip="off")+
+   #scale_x_reverse(expand=expansion(add=c(10,20))) +
+   scale_y_continuous(expand=expansion(mult=c(0,0),add=c(0,1))) +
+  
   labs(title="African Language Sentiment",
        caption="DataSource: #TidyTuesday 2023 week9 African Language Sentiment\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day11 - Circular",
        fill="Inteded use")+
 scale_fill_manual(values = c("#CF3721", "#31A9B8", "#258039")) +
   theme_minimal()+
-  theme(text=element_text(family="Explora",size=50),
+  theme(text=element_text(family="Explora",size=90,face="bold"),
         panel.grid = element_blank(),
         axis.text.y = element_blank(),
-        axis.title = element_blank())+
-  facet_wrap(~language)
+        axis.text.x = element_blank(),
+        axis.title = element_blank()) +
+  facet_wrap(vars(language))
 
 ```
 
 ```{r}
 
-ggsave("p.png",width = 9,height = 10,
+ggsave("p4.png",width = 9,height = 10,
        device = "png",dpi=300,bg="white")
 ```
+
 
 
 
