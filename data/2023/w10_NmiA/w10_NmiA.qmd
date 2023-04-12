@@ -1,5 +1,5 @@
 ---
-title: TidyTuesday 2023 w10 Numbats in Australia
+title: "TidyTuesday 2023 w10 Numbats in Australia"
 author: Federica Gazzelloni
 ---
 
@@ -7,3 +7,93 @@ author: Federica Gazzelloni
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 10)
 ```
+
+
+```{r}
+numbats <- tuesdata$numbats
+```
+
+
+```{r}
+numbats%>%count(scientificName)
+```
+
+
+```{r}
+# devtools::install_github('bbc/bbplot')
+library(bbplot)
+bbplot::bbc_style()
+```
+
+```{r}
+library(ozmaps)
+library(sf)
+oz_states <- ozmaps::ozmap_states
+centroids <- oz_states%>%
+  sf::st_centroid()%>%
+  as_tibble()%>%
+  filter(!NAME=="Other Territories")
+
+
+mapdata <- oz_states%>%as_tibble()
+# mapdata%>%count(NAME)
+
+# nine colors
+colors <- c("#1380A1","#cbcbcb",
+            "#FAAB18","#990000", 
+            "#588300","#d4a09f",
+            "#d999fc","#83b3d2","#cc161d")
+
+p <- ggplot() + 
+  geom_sf_text(data = centroids,
+          mapping = aes(geometry=geometry,
+                        label=NAME),size=3) + 
+  geom_sf(data = mapdata,
+          mapping = aes(geometry=geometry,
+                        fill=NAME),
+          alpha=0.4,color="black",linewidth=0.1) + 
+  scale_fill_manual(values = colors)+
+  guides(fill="none")+
+  ggnewscale::new_scale_fill()+
+  geom_point(data= numbats,
+             mapping=aes(x=decimalLongitude,y=decimalLatitude,
+                         fill=scientificName),
+             shape=21,stroke=0.3,size=3,
+             color="grey",alpha=0.7) +
+  ggthemes::scale_fill_fivethirtyeight()+
+  coord_sf(clip = "off")+
+   labs(title="Mapping the Habitat of the Endangered Numbat",
+        subtitle="A Geographic Analysis of the Species' Distribution in Australia",
+        caption = "DataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day12 - Theme Day: BBC News")+
+  bbplot::bbc_style()+
+  ggthemes::scale_color_fivethirtyeight()+
+  theme(text=element_text(size=12),
+        plot.title = element_text(size=22),
+        plot.subtitle = element_text(size=14),
+        plot.caption = element_text(size=12),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+
+bbplot::finalise_plot(plot_name = p,
+                      source_name = "Source: #TidyTuesday 2023 week10 Numbats in Australia",
+                      save_filepath = "images/basemap.png")
+
+  
+```
+
+```{r}
+library(cowplot)
+
+
+ggdraw()+
+  draw_image("images/basemap.png")+
+  draw_image("images/numbat.png",
+             scale=0.25,
+             x=0.35)
+```
+
+
+```{r}
+ggsave("w10_NmiA.png")
+```
+
