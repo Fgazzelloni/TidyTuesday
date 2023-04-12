@@ -1,9 +1,181 @@
 ---
 title: TidyTuesday 2023 w11 European Drug Development
-author: Federica Gazzelloni
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 11)
 ```
+
+
+```{r}
+drugs <- tuesdata$drugs
+drugs%>%names
+```
+
+
+```{r}
+drugs%>%head
+```
+
+
+```{r}
+drugs%>%
+  filter(category=="veterinary")%>%
+  count(species,pharmacotherapeutic_group,condition_indication,authorisation_status)%>%
+  count(authorisation_status)
+```
+
+
+
+
+```{r}
+drugs%>%count(therapeutic_area)%>%
+  filter(str_detect(therapeutic_area,regex('Abstinence', ignore_case=TRUE)))
+```
+
+
+1. Mental health: Mental health has become an increasingly prevalent topic in pop culture in recent years. For example, in 2017, the popular Netflix series "13 Reasons Why" depicted the experiences of a high school student struggling with mental health issues, sparking a national conversation about the portrayal of mental health in popular media. Additionally, in 2019, singer-songwriter Billie Eilish released a song titled "Everything I Wanted," which addressed her own struggles with mental health and suicide ideation. The song went on to become a hit and was widely praised for its honest portrayal of mental health issues.
+
+1.a Mental health: Mental health has become an increasingly prevalent topic in pop culture since the mid-1990s. For example, in 1997, the film "Good Will Hunting" depicted the experiences of a young man struggling with mental health issues, including depression and trauma. The film was widely praised for its honest portrayal of mental health and its impact on individuals and families. Additionally, in 2010, the popular television show "Glee" featured a storyline in which one of the main characters struggles with bipolar disorder. The storyline was praised for its realistic portrayal of mental health issues and its impact on relationships and daily life.
+
+
+
+2. Cancer: Cancer has been a prevalent health condition in pop culture for many years. For example, the 1979 film "The China Syndrome" depicted the experiences of a television reporter investigating a nuclear power plant, which ultimately leads to a near-meltdown and radiation exposure. The film was released just weeks before the Three Mile Island nuclear accident in Pennsylvania, which brought the issue of nuclear safety to the forefront of public consciousness. Additionally, in 2012, the popular book and film "The Fault in Our Stars" depicted the experiences of two teenagers with cancer who fall in love. The book and film were widely praised for their honest portrayal of the emotional and physical toll of cancer.
+
+2.a Cancer: Cancer has been a prevalent health condition in pop culture since the mid-1990s. For example, in 1995, the film "The American President" depicted the experiences of a widowed president whose wife died of cancer. The film was widely praised for its honest portrayal of the emotional toll of cancer on families and loved ones. Additionally, in 2012, the popular book and film "The Fault in Our Stars" depicted the experiences of two teenagers with cancer who fall in love. The book and film were widely praised for their honest portrayal of the emotional and physical toll of cancer.
+
+3. Addiction: Addiction, particularly to opioids and other drugs, has become a major health crisis in many parts of the world. Pop culture has played a role in raising awareness of the issue. For example, in 2018, the film "Beautiful Boy" depicted the experiences of a father and son dealing with the son's addiction to drugs. The film was based on a memoir by journalist David Sheff and his son Nic, and was widely praised for its honest portrayal of addiction and its impact on families. Additionally, in 2019, rapper Lil Nas X released a song titled "Old Town Road," which addressed his own struggles with addiction and the impact it had on his life. The song went on to become a massive hit and was widely praised for its honest portrayal of addiction.
+
+
+3.a Addiction: Addiction, particularly to opioids and other drugs, has become a major health crisis in many parts of the world since the mid-1990s. Pop culture has played a role in raising awareness of the issue. For example, in 1996, the film "Trainspotting" depicted the experiences of a group of heroin addicts in Scotland. The film was widely praised for its honest portrayal of addiction and its impact on individuals and society. Additionally, in 2018, the film "Beautiful Boy" depicted the experiences of a father and son dealing with the son's addiction to drugs. The film was based on a memoir by journalist David Sheff and his son Nic, and was widely praised for its honest portrayal of addiction and its impact on families.
+
+```{r}
+library(ggtext)
+
+```
+
+
+```{r}
+colors <- c("#a668f1","#35d2da","#fdd433","#f15e9c","#9189c1")
+```
+
+```{r}
+p <- drugs%>%
+  filter(category=="human",authorisation_status=="authorised")%>%
+  count(therapeutic_area,
+        condition_indication,
+        pharmacotherapeutic_group,
+        marketing_authorisation_date)%>%
+  mutate(year=year(marketing_authorisation_date),year=as.integer(year)) %>% 
+  count(year)%>%
+  ggplot(aes(year,n))+
+  geom_col(fill="black",color="black",linewidth=0.3)+
+  geom_smooth(se=FALSE,linewidth=0.5,color="#d4a09f") +
+    geomtextpath::geom_textvline(xintercept = c(1997), 
+                 label = "Mental Health| Good Will Hunting", 
+                 hjust = 0.8,
+                 size=5,
+                 family="Roboto Condensed",
+                 fontface="bold",
+                 linetype = 2, 
+                 vjust = 1.3, 
+                 color = "#35d2da") +
+  geomtextpath::geom_textvline(xintercept = c(2017), 
+                 label = "Mental Health| Netflix series 13 Reasons Why", 
+                 hjust = 0.8,
+                 size=5,
+                 family="Roboto Condensed",
+                 fontface="bold",
+                 linetype = 2, 
+                 vjust = 1.1, 
+                 color = "#35d2da") +
+    geomtextpath::geom_textvline(xintercept = c(2010), 
+                 label = "Mental Health| TV show Glee", 
+                 hjust = 0.8,
+                 size=5,
+                 family="Roboto Condensed",
+                 fontface="bold",
+                 linetype = 2, 
+                 vjust = 1.3, 
+                 color = "#35d2da") +
+    geomtextpath::geom_textvline(xintercept = c(1995), 
+                 label = "Cancer| The American President", 
+                 hjust = 0.8,
+                 size=5,
+                 family="Roboto Condensed",
+                 fontface="bold",
+                 linetype = 2, 
+                 vjust = 1.3, 
+                 color = "#fdd433") +
+    geomtextpath::geom_textvline(xintercept = c(2012), 
+               label = "Cancer| The Fault in Our Stars", 
+               hjust = 0.8,
+               size=5,
+               family="Roboto Condensed",
+               fontface="bold",
+               linetype = 2, 
+               vjust = 1.3, 
+               color = "#fdd433") +
+    geomtextpath::geom_textvline(xintercept = c(2018), 
+             label = "Opioids| Beautiful Boy", 
+             hjust = 0.8,
+             size=5,
+             family="Roboto Condensed",
+             fontface="bold",
+             linetype = 2, 
+             vjust = 1.3, 
+             color = "#f15e9c") +
+    geomtextpath::geom_textvline(xintercept = c(1996), 
+             label = "Opioids| Trainspotting", 
+             hjust = 0.8,
+             size=5,
+             family="Roboto Condensed",
+             fontface="bold",
+             linetype = 2, 
+             vjust = 1.3, 
+             color = "#f15e9c") +
+  scale_y_continuous(expand = c(0,0))+
+  scale_x_continuous(n.breaks = 6) + # #1380A1, #990000, #FAAB18
+  labs(title="**European Drug Development marketing authorisation year trend**",
+       subtitle="Mid-Century onwards Pop culture movies depitching <span style='color:#35d2da;'>Mental health</span>,<span style='color:#fdd433;'>Cancer</span>, and <span style='color:#f15e9c;'>Opioids addiction</span>",
+       caption="Films, shows, and books raise awareness of mental health, cancer, and addiction issues in pop culture.\nDataSource: #TidyTuesday 2023 week11 European Drug Development\nDataViz: Federica Gazzelloni #30DayChartChallenge 2023 Day13 - Pop Culture",
+       x="Time (Year)", y="Count")+
+  theme(text = element_text(family="Roboto Condensed",color="black",face="bold"),
+        axis.text = element_text(family="Roboto Condensed",color="white"),
+        panel.grid = element_line(linewidth=0.1,color="grey90"),
+        plot.title = element_markdown(family="Roboto Condensed",size=18),
+        plot.subtitle = element_markdown(family="Roboto Condensed"),
+        plot.caption = element_text(hjust = 1),
+        plot.background = element_rect(color="#d4a09f",fill="#a668f1"),
+        panel.background = element_rect(color="#a668f1",fill="#a668f1",size=0.5))
+  
+p
+```
+
+
+
+```{r}
+bbplot::finalise_plot(plot_name = p,
+                      logo_image_path = "images/pop-logo.png",
+                      source_name = "European Drug Development and Pop Culture",
+                      save_filepath = "w11_ErDD.png")
+```
+
+
+pop culture is an important aspect of modern society, serving as a means to both entertain and inform individuals about the wider world around them.
+
+Pop culture refers to the popular elements of cultural expression that are widely disseminated through mass media and enjoyed by large segments of the population. 
+
+It includes things like music, film, television, fashion, social media, and other forms of mass communication.
+
+
+
+

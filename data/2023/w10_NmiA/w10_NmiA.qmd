@@ -1,6 +1,12 @@
 ---
 title: "TidyTuesday 2023 w10 Numbats in Australia"
-author: Federica Gazzelloni
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
@@ -22,7 +28,7 @@ numbats%>%count(scientificName)
 ```{r}
 # devtools::install_github('bbc/bbplot')
 library(bbplot)
-bbplot::bbc_style()
+# bbplot::bbc_style()
 ```
 
 ```{r}
