@@ -1,9 +1,92 @@
 ---
-title: TidyTuesday 2023 w12 Programming Languages
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w12 Programming Languages"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 12)
 ```
+```{r}
+languages <- tuesdata$languages
+```
+
+```{r}
+write_csv(languages,"languages.csv")
+```
+
+
+
+```{r}
+languages%>%head
+```
+
+```{r}
+languages%>%names
+```
+
+```{r}
+df <- languages%>%
+  arrange(appeared)%>%
+  select(pldb_id,appeared,type,language_rank,number_of_users)
+df
+```
+
+
+```{r}
+ggplot(df,aes(appeared,language_rank))+
+  geom_point()
+```
+
+```{r}
+df %>%
+  filter(appeared>1900)%>%
+ggplot(aes(appeared,language_rank))+
+  geom_point()+
+  scale_y_reverse()
+```
+
+```{r}
+df %>%
+  count(type,sort = TRUE)%>%
+  mutate(pct=round(n/sum(n)*100,2))
+```
+
+
+```{r}
+df %>%
+  arrange(-appeared)%>%
+  filter(between(appeared,2021,2023))%>%#count(type)
+  mutate(appeared=as.factor(appeared))
+```
+
+
+```{r}
+df %>%
+  arrange(-appeared)%>%
+  filter(between(appeared,2021,2023))%>%#count(type)
+  mutate(appeared=as.factor(appeared))%>%
+  ggplot(aes(appeared,number_of_users,fill=type))+
+  geom_col()+
+  labs(title="New Language tools")
+```
+```{r}
+df%>%
+  group_by(appeared)%>%
+  reframe(n_languages=n(),pldb_id,type,avg=mean(number_of_users))%>%
+  filter(between(appeared,2000,2023)) %>%
+  ggplot(aes(appeared,n_languages))+
+  geom_point()+
+  geom_line()+
+  geom_segment(aes(x=appeared,xend=appeared,y=0,yend=n_languages,
+                   color=n_languages),
+               size=6)+
+  geom_text(aes(label=type),check_overlap = TRUE,vjust=-0.5)
+```
+
