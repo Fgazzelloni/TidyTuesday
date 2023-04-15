@@ -90,3 +90,11 @@ df%>%
   geom_text(aes(label=type),check_overlap = TRUE,vjust=-0.5)
 ```
 
+
+
+
+
+
+
+
+

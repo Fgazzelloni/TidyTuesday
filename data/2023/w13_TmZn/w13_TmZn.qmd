@@ -1,9 +1,124 @@
 ---
-title: TidyTuesday 2023 w13 Time Zones
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w13 Time Zones - #30daychartchallenge day15 positive/negative"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 13)
 ```
+
+```{r}
+transitions<- tuesdata$transitions
+timezones<- tuesdata$timezones
+timezone_countries<- tuesdata$timezone_countries
+countries<- tuesdata$countries
+```
+
+```{r}
+transitions%>%head
+```
+
+```{r}
+timezones%>%head
+```
+
+```{r}
+world<- map_data("world")
+
+timezones%>%
+  ggplot(aes(longitude,latitude))+
+  geom_rect(xmin=0,xmax=Inf,ymin=-Inf,ymax=Inf,fill="#fff1e0")+
+  geom_rect(xmin=-Inf,xmax=0,ymin=-Inf,ymax=Inf,fill="#bfd0dd")+
+  geom_rect(xmin=0,xmax=Inf,ymin=-Inf,ymax=0,fill="#bfd0dd")+
+  geom_rect(xmin=-Inf,xmax=0,ymin=-Inf,ymax=0,fill="#fff1e0")+
+  geom_polygon(data=world,mapping=aes(long,lat,group=group),fill=NA,color="grey")+
+  geom_point(shape=21,stroke=0.3,fill="#7b9aca")+
+  geom_vline(xintercept = 0)+
+  geom_hline(yintercept = 0)+
+  coord_sf()+
+  labs(title="Positive & Negative Coordinates",
+       subtitle = "Time zone locations",
+       caption="DataSource: #TidyTuesday Week13: Time Zones - #30DayChartChallenge Day15: positive/negative\nDataViz: Federica Gazzelloni")+
+  ggthemes::theme_map()+
+  theme(plot.background = element_rect(color="#7b9aca",fill="#7b9aca"))
+```
+
+
+
+## Bonne Projection
+
+```{r}
+library(sf)
+projection_bonne <- c("+proj=bonne +lat_1=10")
+
+world_graticule <- sf::st_graticule(lon= seq(-180,180, 15),
+                                    lat = seq(-90,90, 7.5),
+                                    ndiscr = 5000,
+                                    margin = 0.00000000001) %>%
+  sf::st_transform(projection_bonne)
+
+
+world_pol <- rnaturalearth::ne_countries(returnclass = "sf")
+
+DT_sf = st_as_sf(timezones, coords = c("longitude", "latitude"), 
+                 crs = 4326, agr = "constant")
+
+ggplot()+
+  geom_sf(data = world_graticule)+
+  geom_sf(data = world_pol)+
+  geom_sf(data=DT_sf)+
+  coord_sf()
+```
+
+
+```{r}
+# input_coord <- st_point(c(<longitude>, <latitude>))
+proj_mollweide <- "+proj=moll"
+output_coord <- st_transform(DT_sf, crs = proj_mollweide)
+```
+
+## Mollweide Projection
+```{r}
+# set the fonts
+library(showtext)
+library(sysfonts)
+library(extrafont)
+showtext::showtext_auto()
+showtext::showtext_opts(dpi=320)
+font_add_google(name="Patrick Hand",
+                family="Patrick Hand")
+```
+
+```{r}
+ggplot(output_coord)+
+  geom_rect(xmin=0,xmax=Inf,ymin=-Inf,ymax=Inf,fill="#fff1e0")+
+  geom_rect(xmin=-Inf,xmax=0,ymin=-Inf,ymax=Inf,fill="#bfd0dd")+
+  geom_rect(xmin=0,xmax=Inf,ymin=-Inf,ymax=0,fill="#bfd0dd")+
+  geom_rect(xmin=-Inf,xmax=0,ymin=-Inf,ymax=0,fill="#fff1e0")+
+  geom_sf(data = world_pol,fill=NA,color="grey40")+
+  geom_sf(shape=21,stroke=0.3,fill="#7b9aca")+
+  geom_vline(xintercept = 0)+
+  geom_hline(yintercept = 0)+
+  #coord_map(projection = "mollweide")+
+  labs(title="Positive & Negative Coordinates",
+       subtitle = "Time zone locations",
+       caption="DataSource: #TidyTuesday Week13: Time Zones - #30DayChartChallenge Day15: positive/negative\nDataViz: Federica Gazzelloni")+
+  ggthemes::theme_map()+
+  theme(text=element_text(family="Patrick Hand"),
+        plot.title = element_text(size=30),
+        plot.caption = element_text(size=10),
+        plot.background = element_rect(color="#7b9aca",fill="#7b9aca"))
+```
+
+```{r}
+ggsave("p.png",
+       width = 7,height = 5)
+```
+
