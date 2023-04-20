@@ -1,5 +1,5 @@
 ---
-title: "Week 15 US Egg Production #30daychartchallenge day17 Network"
+title: "#TidyTuesday Week 15 US Egg Production & #30daychartchallenge day21 down/upwards"
 author: "Federica Gazzelloni"
 execute:  
   comments: ""
@@ -9,6 +9,8 @@ execute:
   message: false
 ---
 
+
+> To cite Federica's work, please use: Gazzelloni F., 2023 Data Visualization US Egg Production down/upwards
 
 ```{r}
 library(tidyverse)
@@ -21,23 +23,129 @@ cages <- tuesdata$`cage-free-percentages`
 ```
 
 ```{r}
-cages%>%
-  mutate(ymon=zoo::as.yearmon(observed_month)) %>%
-  group_by(ymon)%>%
-  reframe(pct_hens=round(percent_hens/sum(percent_hens)*100,2),
-          pct_eggs=round(percent_eggs/sum(percent_eggs)*100,2))
-```
-
-```{r}
 eggs%>%
   inner_join(cages,by="observed_month")%>%
-  mutate(ymon=zoo::as.yearmon(observed_month),.after=observed_month)%>%
+  distinct() %>%
+  mutate(ymon=zoo::as.yearmon(observed_month),
+         .after=observed_month)
+```
+
+
+```{r}
+df <- eggs%>%
+  inner_join(cages,by="observed_month")%>%
+  distinct() %>%
+  mutate(ymon=zoo::as.yearmon(observed_month),
+         .after=observed_month)%>%
   select(-source.x,-source.y,-observed_month)%>%
   group_by(ymon,prod_process)%>%
   mutate(pct_hens=round(n_hens/sum(n_hens)*100,2),
-          pct_eggs=round(n_eggs/sum(n_eggs)*100,2))
+          pct_eggs=round(n_eggs/sum(n_eggs)*100,2))%>%
+  arrange(ymon)
+
+df%>%head
+```
+
+```{r}
+df %>%
+  ggplot(aes(ymon,n_hens))+
+  geom_line(aes(group=prod_type))+
+  facet_wrap(~prod_process,scales = "free")
+```
+
+```{r}
+df %>%
+  filter(!prod_process=="all")%>%
+  ggplot()+
+  geom_line(aes(ymon,n_hens,group=prod_type),
+            lineend = "butt",
+            arrow = arrow(length = unit(0.05,"inches"),
+                          type="closed"))+  
+  facet_wrap(~prod_process,scales = "free_y")+
+  scale_y_log10()
+```
+
+```{r}
+df %>%
+  filter(!prod_process=="all")%>%
+  ggplot(aes(ymon,n_hens))+
+  geom_line(aes(group=prod_type))+
+  facet_wrap(~prod_process,scales = "free_y")
+```
+
+```{r}
+df %>%
+  filter(!prod_process=="all")%>%
+  ggplot()+
+  geom_line(aes(ymon,percent_eggs,group=prod_type),
+            lineend = "butt",
+            arrow = arrow(length = unit(0.05,"inches"),
+                          type="closed"))+  
+  geom_line(aes(ymon,percent_hens,group=prod_type),
+            lineend = "butt",
+            arrow = arrow(length = unit(0.05,"inches"),
+                          type="closed"))+
+  facet_wrap(~prod_process,scales = "free_y")
 ```
 
 
 
+### Fill missing values
+
+you can fill in the data with two approaches:
+
+- Up - While filling the missing values, you have to specify the direction of filling of values. If you choose Up, then the filling process will be bottom-up.
+- Down - In this method, you have to set the direction of filling to down.
+
+source: [https://www.digitalocean.com/community/tutorials/fill-missing-values-in-tidyr-r](https://www.digitalocean.com/community/tutorials/fill-missing-values-in-tidyr-r)
+
+
+Use `.direction = "downup"` to fill missing values in both directions
+
+
+```{r}
+df %>%
+  filter(!prod_process=="all")%>%
+  tidyr::fill(percent_eggs, .direction = 'downup') %>% # View()
+  mutate(percent_eggs=ifelse(is.na(percent_eggs),25,percent_eggs))%>% #View
+  ggplot()+
+  geom_line(aes(ymon,percent_eggs,group=prod_type),
+            color="red",
+            lineend = "butt",
+            arrow = arrow(length = unit(0.05,"inches"),
+                          type="closed"))+  
+  geom_line(aes(ymon,percent_hens,group=prod_type),
+            lineend = "butt",
+            arrow = arrow(length = unit(0.05,"inches"),
+                          type="closed"))+
+  facet_wrap(~prod_process,scales = "free_y")+
+  ggthemes::theme_fivethirtyeight()
+```
+Aug 2016 - Feb 2021
+```{r}
+df %>%
+  filter(!prod_process=="all")%>% # count(ymon)
+  tidyr::fill(percent_eggs, .direction = 'downup') %>% # View()
+  mutate(percent_eggs=ifelse(is.na(percent_eggs),25,percent_eggs))%>% #View
+  pivot_longer(cols = c("percent_eggs","percent_hens"))%>%
+  mutate(name=ifelse(name=="percent_eggs","eggs (%)","hens (%)")) %>%
+  ggplot()+
+  geom_line(aes(ymon,value,group=name,color=name),
+            lineend = "butt",
+            arrow = arrow(length = unit(0.05,"inches"),
+                          type="closed"))+ 
+  facet_wrap(~prod_process,scales = "free_y")+
+  labs(title="US Egg Production Aug 2016 - Feb 2021",
+       subtitle="Hens & Eggs down/upwards",
+       color="",
+       caption="DataSource: #TidyTuesday Week 15 US Egg Production\n #30DayChartChallenge Day 21 down/upwards | DataViz: Federica Gazzelloni")+
+  ggthemes::scale_color_fivethirtyeight()+
+  ggthemes::theme_fivethirtyeight()+
+  theme(strip.background = element_rect(color="#192d40",fill="#192d40"),
+        strip.text = element_text(color="white"))
+```
+
+```{r}
+ggsave("w15_UEPD.png",width = 7,height = 5,bg="white")
+```
 
