@@ -1,9 +1,108 @@
 ---
-title: TidyTuesday 2023 w14 Premier League Match Data
-author: Federica Gazzelloni
+title: "TidyTuesday 2023 w14 Premier League Match Data #30daychartchallenge day20 Correlation"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
 ---
+
+
+> To cite Federica's work, please use: Gazzelloni F., 2023 Data Visualization Premier League Match Data Correlation
+
+
 
 ```{r}
 library(tidyverse)
 tuesdata <- tidytuesdayR::tt_load(2023, week = 14)
 ```
+
+```{r}
+df <- tuesdata$`soccer21-22`
+df%>%head
+```
+
+
+```{r}
+
+df%>%
+  mutate(Date=as.Date(Date,"%d/%m/%Y"),
+         year=zoo::as.yearmon(Date),.after=Date)%>%
+  count(year)
+```
+
+```{r}
+df_corr <- df[,11:22]
+df_corr%>%head()
+```
+
+```{r}
+df_named <- df[,11:22] %>%
+  rename("HomeShots"=HS,
+         "AwayShots"=AS,
+         "HomeShots-on-Target"=HST,
+         "AwayShots-on-Target"=AST,
+         "HomeFouls"=HF,
+         "AwayFouls"=AF,
+         "HomeCorners"=HC,
+         "AwayCorners"=AC,
+         "HomeYellowCards"=HY,
+         "AwayYellowCards"=AY,
+         "HomeRedCards"=HR,
+         "AwayRedCards"=AR)
+
+df_named%>%head
+```
+
+
+```{r}
+# Quick display of two cabapilities of GGally, to assess the distribution and correlation of variables 
+library(GGally)
+
+ 
+# Nice visualization of correlations
+ggcorr(df_named, #df[,11:22], 
+       method = c("pairwise"),
+       geom="circle",
+       max_size = 15,
+       min_size = 5,
+       family="Roboto Condensed",
+       nbreaks = 6,
+       angle = 0,
+       palette = "Paired",
+       hjust = 1, 
+       size = 4, 
+       color = "grey50",
+       #low = "green",
+       #mid = "#EEEEEE",
+       #high = "#F21A00",
+       layout.exp = 1,
+       name = expression(rho))+
+  geom_point(size = 10, aes(color = coefficient > 0, 
+                            alpha = abs(coefficient) > 0.5)) +
+  scale_alpha_manual(values = c("TRUE" = 0.25, "FALSE" = 0)) +
+  guides(alpha = FALSE)+
+  labs(caption="Correlation for home and away side such as fouls, shots, cards\nDataSource: #TidyTuesday 2023 w14 Premier League Match Data\n#30daychartchallenge day20 Correlation | DataViz: Federica Gazzelloni") +
+  annotate(geom = "text",
+           family="Roboto Condensed",
+           fontface="bold",
+           label="Premier League\nMatch\n2021-2022",
+           size=14,
+           color="#a8bd3a",
+           hjust=0,
+           x = 0 ,y =c(10) )+
+  theme(text=element_text(family="Roboto Condensed"),
+        plot.caption = element_text(size=12,vjust = 1),
+        plot.margin = margin(0,0,0,0, "pt"))
+```
+
+```{r}
+ggsave("corr.png",width = 9,height = 6)
+```
+
+
+
+
+

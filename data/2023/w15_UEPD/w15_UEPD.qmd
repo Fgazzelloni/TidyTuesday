@@ -1,0 +1,43 @@
+---
+title: "Week 15 US Egg Production #30daychartchallenge day17 Network"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2023, week = 15)
+```
+
+```{r}
+eggs <- tuesdata$`egg-production`
+cages <- tuesdata$`cage-free-percentages`
+```
+
+```{r}
+cages%>%
+  mutate(ymon=zoo::as.yearmon(observed_month)) %>%
+  group_by(ymon)%>%
+  reframe(pct_hens=round(percent_hens/sum(percent_hens)*100,2),
+          pct_eggs=round(percent_eggs/sum(percent_eggs)*100,2))
+```
+
+```{r}
+eggs%>%
+  inner_join(cages,by="observed_month")%>%
+  mutate(ymon=zoo::as.yearmon(observed_month),.after=observed_month)%>%
+  select(-source.x,-source.y,-observed_month)%>%
+  group_by(ymon,prod_process)%>%
+  mutate(pct_hens=round(n_hens/sum(n_hens)*100,2),
+          pct_eggs=round(n_eggs/sum(n_eggs)*100,2))
+```
+
+
+
+
