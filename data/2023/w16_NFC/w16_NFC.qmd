@@ -1,0 +1,130 @@
+---
+title: "#TidyTuesday Week 16 Neolithic Founder Crops"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+
+> To cite Federica's work, please use: Gazzelloni F., 2023 Data Visualization Neolithic Founder Crops 
+
+
+The term "Neolithic Founder Crops" refers to the crops that were first domesticated during the Neolithic period, which began around 10,000 BCE. These crops include wheat, barley, peas, lentils, and chickpeas, among others. 
+
+
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2023, week = 16)
+founder_crops <- tuesdata$founder_crops
+founder_crops %>%head
+```
+
+
+```{r}
+founder_crops%>%names
+```
+
+Eight **founder crops** — emmer wheat, einkorn wheat, barley, lentil, pea, chickpea, bitter vetch, and flax.
+```{r}
+founder_crops%>%count(longitude,latitude,category,founder_crop)
+```
+
+
+```{r}
+world <- map_data("world")
+long_range <- range(founder_crops$longitude)
+lat_range <- range(founder_crops$latitude)
+long_range;lat_range
+```
+
+```{r}
+founder_crops%>%
+  ggplot(aes(x=longitude,y=latitude))+
+  geom_polygon(data=world,
+               mapping=aes(long,lat,group=group),
+               inherit.aes = FALSE,
+               fill=NA,color="grey70")+
+  stat_bin2d(aes(fill = after_stat(density)),
+             binwidth = c(1,1))+
+  coord_quickmap(xlim = c(30,50),ylim = c(30,40))
+```
+
+
+```{r}
+founder_crops %>%
+  filter(!is.na(category)) %>%
+  ggplot(aes(longitude, latitude, color = category)) +
+  geom_polygon(
+    data = world,
+    aes(long, lat, group = group),
+    fill = NA,
+    color = "grey70"
+  ) +
+  stat_bin2d(aes(fill = after_stat(density)),
+             alpha = 0.3,
+            # color="navy",
+             binwidth = c(1, 1)) +
+  geom_point(aes(size = n)) +
+  guides(alpha = "none", fill = "none", size = "none") +
+  coord_quickmap(xlim = c(30, 50), ylim = c(30, 40))+
+    tvthemes::scale_fill_avatar(type = "continuous")+
+   tvthemes::scale_color_avatar(reverse = TRUE)+
+  tvthemes::theme_avatar()+
+  theme(axis.title = element_text(size=6),
+        axis.title.y = element_text(size=6,hjust = 1))
+```
+
+
+
+```{r}
+tail_df <- founder_crops%>%
+  count(taxon_source,genus,family,category,founder_crop,age_start,age_end,n,prop)
+```
+
+```{r}
+founder_crops%>%
+  count(founder_crop,age_start,age_end,n,prop)%>%
+  filter(!is.na(founder_crop)) %>%
+  arrange(age_start)%>%
+  group_by(founder_crop,age_start,age_end)%>%
+  reframe(tot=sum(n)) %>%
+  ggplot(mapping=aes(x=age_start, y=age_end)) +
+  stat_bin2d(aes(fill = after_stat(density)),
+             color="white",size=1,
+             binwidth = c(500,1500))+
+  scale_x_reverse()+
+  scale_y_reverse()+
+  coord_cartesian(clip = "off")+
+  labs(title="",
+       subtitle="",
+       caption="DataSource: #TidyTuesday Week 16 Neolithic Founder Crops\n#30DayChartChallenge Day23 Tiles | DataViz: Federica Gazzelloni",
+       x="Age Start: oldest date for the record, in years before 1950 CE (years BP)",
+       y="Age End: most recent date, in years before 1950 CE (years BP)")+
+    annotate(geom = "text",
+           family="Roboto Condensed",
+           fontface="bold",
+           label="Neolithic\nFounder Crops",
+           size=12,
+           color="#cf5f26",
+           hjust=0,
+           x = 15000 ,y =0 )+
+   tvthemes::scale_fill_avatar(type = "continuous")+
+  #scale_fill_continuous(labels=scales::percent)
+  tvthemes::theme_avatar()+
+  theme(axis.title = element_text(size=6),
+        axis.title.y = element_text(size=6,hjust = 1),
+        legend.text = element_text(size=4),
+        plot.caption = element_text(hjust=0.5))
+```
+
+
+```{r}
+ggsave("w16_NFC.png",
+       width = 7,height = 4)
+```
+
