@@ -117,6 +117,8 @@ london_marathon%>%
   facet_wrap(~Nationality)
   
 ```
+
+
 ```{r}
 library(sysfonts)
 sysfonts::font_add_google("Chelsea Market","Chelsea Market")
@@ -207,7 +209,7 @@ london_marathon%>%
   facet_wrap(~Nationality) +
   labs(title="Amount raised for charity based on acceptances",
        subtitle="scaled by the standard deviations without centering",
-       caption="DataSource: #TidyTuesday Week 17 London Marathon\n#30DayChartChallenge Day 26 uncertanties: local change",
+       caption="DataSource: #TidyTuesday Week 17 London Marathon\n#30DayChartChallenge Day 26 uncertanties: local change | DataViz: Federica Gazzelloni",
        color="")+
   scale_x_continuous(breaks = c(2007,2010,2014,2017))+
   scale_colour_manual("", 
@@ -216,13 +218,18 @@ london_marathon%>%
   guides(fill="none")+
   ggthemes::theme_stata(base_family = "Chelsea Market",
                         scheme="s1rcolor")+
-  theme(strip.background = element_rect(color="#910C00",fill="#910C00"),
-        plot.caption = element_text(hjust = 0.5))
+  theme(text=element_text(size=30),
+        strip.background = element_rect(color="#910C00",fill="#910C00"),
+        plot.caption = element_text(hjust = 0.5, size=30, lineheight = 0.5),
+        plot.title = element_text(size=60),
+        plot.subtitle = element_text(size=40),
+        axis.title.y = element_blank())
 ```
 
 ```{r}
-showtext::showtext_auto(enable = F)
-ggsave("w17_LM.png",
+showtext::showtext_auto(enable = T)
+ggsave("w17_LM2.png",
+       dpi=320,
        width = 7,height = 5,
        bg="black")
 ```
