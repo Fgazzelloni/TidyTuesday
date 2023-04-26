@@ -1,0 +1,229 @@
+---
+title: "#TidyTuesday Week17 London Marathon\n#30DayChartChallenge day26 uncertanties: local change"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+> To cite Federica's work, please use: Gazzelloni F., 2023 Data Visualization London Marathon
+
+```{r}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2023, week = 17)
+winners <- tuesdata$winners
+london_marathon <- tuesdata$london_marathon
+```
+
+```{r}
+winners%>%count(Nationality)
+```
+
+```{r}
+london_marathon%>%head
+```
+
+```{r}
+london_marathon%>%
+  mutate(ymon=zoo::as.yearmon(Date),.after=Date)%>%
+  arrange(ymon)%>%
+  pivot_longer(cols=c(Starters,Finishers))%>%
+  select(ymon,name,value)%>%
+  ggplot(aes(x=ymon,y=value,group=name,color=name))+
+  geom_point()+
+  geom_smooth(method="lm",
+              linewidth=0.5,
+              se=F)
+ 
+```
+
+```{r}
+time <- winners%>%
+  count(Time)%>%
+  mutate(time=hms(Time))
+  
+
+library(hms)
+
+df <- winners%>%
+  select(Year,Nationality,Time)%>%
+  mutate(time=lubridate::hms(Time)) %>%
+  group_by(Nationality)%>%
+  mutate(mean=mean(Time),
+          sd=sd(Time),
+          max=max(Time),
+          min=min(Time))%>%
+  filter(!is.na(sd))
+df
+```
+
+```{r}
+# Create multiple plots using facet_wrap()
+ggplot(df, aes(x = Year, y = time)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), color = "grey80") +
+  scale_color_gradient(low = "blue", high = "red") +
+  geom_smooth(method = "lm") +
+  #scale_y_time()+
+  facet_wrap(~Nationality,scales = "free_y")+
+  theme(axis.text.y = element_blank())
+```
+
+
+
+```{r}
+london_marathon%>%
+  pivot_longer(cols=c(Applicants,Accepted))%>%
+  select(Year,name,value) %>%
+   ggplot(aes(x=Year,y=value,group=name,color=name))+
+  geom_point()+
+  geom_smooth(method="lm",
+              linewidth=0.5,
+              se=F)
+```
+```{r}
+london_marathon%>%
+  filter(!Year==2020)%>%
+  select(Year,Applicants,Accepted)%>%
+   ggplot(aes(x=Year))+
+   geom_point(aes(y=Applicants))+
+   geom_point(aes(y=Accepted))+
+   geom_segment(aes(xend=Year,y=Accepted,yend=Applicants))
+```
+
+```{r}
+winners%>%
+  group_by(Nationality)%>%
+  mutate(n=n())%>%
+  arrange(-n)%>%
+  filter(Nationality%in%c("United Kingdom","Ireland","Kenya"))%>%
+  ggplot(aes(x=Nationality,y=n))+
+  geom_point()
+```
+```{r}
+london_marathon%>%
+  filter(!is.na(Raised))%>%
+  select(Year,Accepted,Raised)%>%
+  inner_join(winners%>%count(Year,Nationality),by="Year")%>%
+  arrange(Year)%>%
+  mutate(Nationality=as.factor(Nationality))%>%
+  filter(Nationality%in%c("Kenya","United Kingdom","United States"))
+  ggplot(aes(Accepted,Raised,group=Nationality,color=Nationality))+
+  geom_point()+
+  geom_line()
+  facet_wrap(~Nationality)
+  
+```
+```{r}
+library(sysfonts)
+sysfonts::font_add_google("Chelsea Market","Chelsea Market")
+library(showtext)
+showtext::showtext_auto()
+```
+
+```{r}
+london_marathon%>%
+  filter(!is.na(Raised))%>%
+  select(Year,Accepted,Raised)%>%
+  inner_join(winners%>%count(Year,Nationality),by="Year")%>%
+  arrange(Year)%>%
+  mutate(Nationality=as.factor(Nationality))%>%
+  filter(Nationality%in%c("Kenya","United Kingdom","United States"))%>%
+  mutate(Accepted=scale(Accepted,
+                        center = F, scale = TRUE),
+         Raised=scale(Raised,
+                      center = F, scale = TRUE)
+         ) %>%
+  pivot_longer(cols = c("Accepted","Raised"))%>% #count(Year)
+  ggplot(aes(x=Year,y=value,
+             group=name,
+             color=name,fill=name))+
+  geom_point(shape=21,stroke=0.5,
+             size=2,
+             color="white",
+             key_glyph = draw_key_rect)+
+  geom_line(linewidth=1,
+            key_glyph = draw_key_rect)+
+  geom_segment(aes(xend=Year,y=value,yend=value))+
+  facet_wrap(~Nationality) +
+  labs(title="Amount raised for charity based on acceptances",
+       subtitle="scaled by the standard deviations without centering",
+       caption="DataSource: #TidyTuesday Week 17 London Marathon\n#30DayChartChallenge Day 26 uncertanties: local change",
+       color="")+
+  scale_x_continuous(breaks = c(2007,2010,2014,2017))+
+  ggthemes::scale_color_stata()+
+  ggthemes::scale_fill_stata()+
+  guides(fill="none")+
+  ggthemes::theme_stata(base_family = "Chelsea Market",
+                        scheme="s1rcolor")
+
+
+
+  tvthemes::scale_color_hilda()
+  scale_y_continuous(labels=scales::percent)
+```
+
+```{r}
+london_marathon%>%
+  filter(!is.na(Raised))%>%
+  select(Year,Accepted,Raised)%>%
+  inner_join(winners%>%count(Year,Nationality),by="Year")%>%
+  arrange(Year)%>%
+  mutate(Nationality=as.factor(Nationality))%>%
+  filter(Nationality%in%c("Kenya","United Kingdom","United States"))%>%
+  mutate(Accepted=scale(Accepted,
+                        center = F, scale = TRUE),
+         Raised=scale(Raised,
+                      center = F, scale = TRUE)
+         ) %>%
+  # pivot_longer(cols = c("Accepted","Raised"))%>% #count(Year)
+  ggplot(aes(x=Year)
+             #group=name,
+             #color=name,fill=name)
+         )+
+  geom_point(aes(y=Accepted),
+             shape=21,stroke=0.5,
+             size=2,
+             color="white",
+             fill="#910C00",
+             key_glyph = draw_key_rect)+
+    geom_point(aes(y=Raised),
+             shape=21,stroke=0.5,
+             size=2,
+             fill="#00668F",
+             color="white",
+             key_glyph = draw_key_rect)+
+  geom_line(aes(y=Accepted,color="Accepted"),
+            linewidth=1,
+            key_glyph = draw_key_rect)+
+    geom_line(aes(y=Raised,color="Raised"),
+              linewidth=1,
+            key_glyph = draw_key_rect)+
+  geom_segment(aes(xend=Year,y=Accepted,yend=Raised),
+               color="grey80")+
+  facet_wrap(~Nationality) +
+  labs(title="Amount raised for charity based on acceptances",
+       subtitle="scaled by the standard deviations without centering",
+       caption="DataSource: #TidyTuesday Week 17 London Marathon\n#30DayChartChallenge Day 26 uncertanties: local change",
+       color="")+
+  scale_x_continuous(breaks = c(2007,2010,2014,2017))+
+  scale_colour_manual("", 
+                      breaks = c("Accepted", "Raised"),
+                      values = c("#910C00", "#00668F")) +
+  guides(fill="none")+
+  ggthemes::theme_stata(base_family = "Chelsea Market",
+                        scheme="s1rcolor")+
+  theme(strip.background = element_rect(color="#910C00",fill="#910C00"),
+        plot.caption = element_text(hjust = 0.5))
+```
+
+```{r}
+showtext::showtext_auto(enable = F)
+ggsave("w17_LM.png",
+       width = 7,height = 5,
+       bg="black")
+```
+
