@@ -126,47 +126,7 @@ library(showtext)
 showtext::showtext_auto()
 ```
 
-```{r}
-london_marathon%>%
-  filter(!is.na(Raised))%>%
-  select(Year,Accepted,Raised)%>%
-  inner_join(winners%>%count(Year,Nationality),by="Year")%>%
-  arrange(Year)%>%
-  mutate(Nationality=as.factor(Nationality))%>%
-  filter(Nationality%in%c("Kenya","United Kingdom","United States"))%>%
-  mutate(Accepted=scale(Accepted,
-                        center = F, scale = TRUE),
-         Raised=scale(Raised,
-                      center = F, scale = TRUE)
-         ) %>%
-  pivot_longer(cols = c("Accepted","Raised"))%>% #count(Year)
-  ggplot(aes(x=Year,y=value,
-             group=name,
-             color=name,fill=name))+
-  geom_point(shape=21,stroke=0.5,
-             size=2,
-             color="white",
-             key_glyph = draw_key_rect)+
-  geom_line(linewidth=1,
-            key_glyph = draw_key_rect)+
-  geom_segment(aes(xend=Year,y=value,yend=value))+
-  facet_wrap(~Nationality) +
-  labs(title="Amount raised for charity based on acceptances",
-       subtitle="scaled by the standard deviations without centering",
-       caption="DataSource: #TidyTuesday Week 17 London Marathon\n#30DayChartChallenge Day 26 uncertanties: local change",
-       color="")+
-  scale_x_continuous(breaks = c(2007,2010,2014,2017))+
-  ggthemes::scale_color_stata()+
-  ggthemes::scale_fill_stata()+
-  guides(fill="none")+
-  ggthemes::theme_stata(base_family = "Chelsea Market",
-                        scheme="s1rcolor")
 
-
-
-  tvthemes::scale_color_hilda()
-  scale_y_continuous(labels=scales::percent)
-```
 
 ```{r}
 london_marathon%>%
@@ -228,7 +188,7 @@ london_marathon%>%
 
 ```{r}
 showtext::showtext_auto(enable = T)
-ggsave("w17_LM2.png",
+ggsave("w17_LM.png",
        dpi=320,
        width = 7,height = 5,
        bg="black")
