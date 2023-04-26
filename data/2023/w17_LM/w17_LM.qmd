@@ -167,7 +167,7 @@ london_marathon%>%
   geom_segment(aes(xend=Year,y=Accepted,yend=Raised),
                color="grey80")+
   facet_wrap(~Nationality) +
-  labs(title="Amount raised for charity based on acceptances",
+  labs(title="Amount raised for charity based on acceptance",
        subtitle="scaled by the standard deviations without centering",
        caption="DataSource: #TidyTuesday Week 17 London Marathon\n#30DayChartChallenge Day 26 uncertanties: local change | DataViz: Federica Gazzelloni",
        color="")+
