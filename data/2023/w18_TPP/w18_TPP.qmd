@@ -1,0 +1,215 @@
+---
+title: "The Portal Project"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+> To cite Federica's work, please use: Gazzelloni F., 2023 Data Visualization The Portal Project
+
+
+Title: "Dynamics of desert rodents in Arizona"
+
+`The Portal Project` is a long-term ecological study that has been conducted near Portal, AZ since 1977. The study focuses on the interactions among rodents, ants, and plants and their respective responses to climate. The study manipulates access to 24 study plots to experimentally study the interactions among rodents and other organisms. The study has produced over 100 scientific papers and is one of the longest running ecological studies in the U.S. 
+
+In particular, here we look at data relative to rodents made openly available on [zenodo](https://zenodo.org/record/7897217#.ZGX7ROxBw1J).
+
+```{r}
+#| message: false
+#| warning: false
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2023, week = 18)
+plots <- tuesdata$plots
+species <- tuesdata$species
+surveys <- tuesdata$surveys
+```
+
+
+```{r}
+plots%>%head
+```
+
+
+```{r}
+species%>%names
+```
+
+```{r}
+surveys%>%names
+```
+
+```{r}
+surveys %>% # dim 28364    22
+  left_join(species,by="species") %>% # dim 28364    36
+  glimpse()
+```
+
+
+```{r}
+my_df <- surveys %>% # dim 28364    22
+  left_join(species,by="species") %>%
+  select(-taxa,-rodent,-unidentified,-note2,-note3,
+         -testes,-vagina,-nipples) %>% 
+  filter(!is.na(sex),!is.na(species),!is.na(hfl),!is.na(wgt))%>%
+  count(plot,year,commonname,species,sex,hfl,wgt,treatment,sort = T)
+
+my_df%>%head
+```
+
+
+```{r}
+# my_df <- surveys %>% # dim 28364    22
+#   left_join(species,by="species") %>%
+#   select(-taxa,-rodent,-unidentified,-note2,-note3,
+#          -testes,-vagina,-nipples) %>% 
+#   filter(!is.na(sex)) %>%
+#   mutate(age=ifelse(is.na(age),"Adult","Juvenile"),
+#          lactation=ifelse(is.na(lactation),"lactation","no-lactation"),
+#          pregnant=ifelse(is.na(pregnant),"pregnant","no-pregnant"))%>%
+#   # count(age)  
+#   count(plot,species,granivore,sex,reprod,age,pregnant,lactation)
+# 
+# my_df%>%head
+```
+
+```{r}
+coords <- read.csv("https://raw.githubusercontent.com/weecology/PortalData/main/SiteandMethods/Portal_UTMCoords.csv")
+coords1 <- coords%>%
+  rename(utm_east=east,utm_north=north) %>% # count(plot)
+  filter(!plot=="weatherstation")%>%
+  mutate(plot=as.numeric(plot))
+
+
+coords1%>%head
+```
+
+```{r}
+ggplot(coords1)+
+  geom_point(aes(utm_east,utm_north,fill=elev),
+             shape=21,stroke=0.5)+
+  scale_fill_viridis_c()
+```
+
+
+### what-utm-zone-am-i-in
+https://mangomap.com/robertyoung/maps/69585/what-utm-zone-am-i-in-#
+```{r}
+library(oregonfrogs)
+
+new_df <- oregonfrogs::utm_to_longlat(coords1,
+                            utm_crs = "+proj=utm +zone=12", 
+                            longlat_crs ="+proj=longlat +datum=WGS84" )
+
+new_df1 <- new_df%>%
+  left_join(my_df,by="plot")%>%
+  filter(type=="quadrat")
+
+new_df1%>%head
+```
+
+```{r}
+range(new_df$X);
+range(new_df$Y)
+```
+
+The study site is located approximately 6.5 km north and 2 km east of the town of Portal, AZ (31°56'20.29"N 109° 4'47.44"W).
+
+```{r}
+species <- new_df1%>%
+  drop_na()%>%#count(year)
+  filter(year==2021,
+         commonname=="Desert pocket mouse") 
+```
+
+
+```{r}
+states=map_data("state")
+ggplot(states)+
+  geom_point(data=new_df,mapping=aes(X,Y),
+             fill=NA,shape=21,stroke=0.1,color="grey")+
+  geom_jitter(data=species,
+             mapping=aes(X,Y,alpha=n,fill=wgt,color=treatment),
+             shape=21,stroke=0.3)+
+  scale_fill_viridis_c()+
+  scale_color_viridis_d()+
+  coord_sf(xlim = c(-109.0831, -109.0775),ylim = c(31.93611, 31.93928))+
+  facet_wrap(~sex)+
+  labs(title="Desert pocket mouse in 2021")+
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+states=map_data("state")
+ggplot(states)+
+  geom_polygon(aes(long,lat,group=group),fill=NA,color="navy")+
+   geom_point(data=new_df,mapping=aes(X,Y),
+             fill=NA,shape=21,stroke=0.1,
+             size=20,
+             color="red")+
+  coord_sf()+
+  ggthemes::theme_map()
+```
+
+```{r}
+library(showtext)
+showtext_auto()
+sysfonts::font_add_google(name="Pangolin",
+                          family="Pangolin")
+```
+
+
+
+
+```{r}
+ggplot(coords1)+
+  geom_point(data=new_df,mapping=aes(X,Y,fill=elev),alpha=0.4,
+  shape=21,stroke=0.1,color="grey")+
+  scale_fill_viridis_c()+
+  geom_point(data = new_df1 %>%
+               drop_na() %>%
+               filter(year == 2021, 
+                      commonname == "Desert pocket mouse"),
+             mapping=aes(X,Y,
+                         color=factor(sex),
+                         alpha=elev,
+                         size=n,
+                         shape=treatment))+
+  coord_sf(xlim = c(-109.0831, -109.0775),ylim = c(31.93611, 31.93928))+
+  scale_color_viridis_d()+
+  guides(alpha="none",
+         size="none",
+         fill=guide_colorbar(order=3),
+         color=guide_legend(title="Sex",order=2),
+         shape=guide_legend(title="Treatment",order=1))+
+  ggthemes::theme_few()+
+  theme(text=element_text(family="Pangolin",size=50),
+        legend.position = "bottom",
+        legend.box = "vertical",
+        legend.background = element_blank(),
+        legend.margin = margin(0,0,0,0,unit = "pt"),
+        legend.key.size = unit(5,units="pt"),
+        legend.key = element_rect(fill = "white", colour = "black"),
+        legend.text = element_text(size=24),
+        plot.background = element_rect(color="#2c3035",fill="#2c3035"),
+        panel.background = element_rect(color="#2c3035",fill="#2c3035"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(color="gold"),
+        plot.subtitle = element_text(color="gold"),
+        plot.caption = element_text(color="grey"))+
+  labs(title="The Portal Project",
+       subtitle="Desert pocket mouse: treatment types by site in 2021",
+       caption = "The plot shows the sites of the research project in Arizona, elevation is lower on the left side of the sites than on the right side.\nDataSource: #TidyTuesday 2023 week18 The Portal Project\nDataViz: Federica Gazzelloni")
+```
+
+```{r}
+#showtext.auto(enable = FALSE)
+ggsave("~/Documents/R/R_general_resources/EDA_and_maps/TidyTuesday/data/2023/w18_TPP/p.png")
+```
+

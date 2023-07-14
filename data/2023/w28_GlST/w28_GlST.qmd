@@ -1,0 +1,347 @@
+---
+title: "GIST"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+> To cite Federica's work, please use: Gazzelloni F., 2023 Data Visualization GIST
+
+Source of original design: <https://earthobservatory.nasa.gov/world-of-change/global-temperatures#:~:text=According%20to%20an%20ongoing%20temperature,1.9%C2%B0%20Fahrenheit)%20since%201880.>
+
+```{r message=FALSE,warning=FALSE}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2023, week = 28)
+```
+
+
+
+```{r}
+tuesdata$global_temps%>%head
+```
+
+### Global Temperature Anomalies
+
+Anomalies are calculated with respect to the 1951-1980 climatology. 
+
+Global Temperatures are in C° degrees, what we see here is the difference in temperature as a result of an application of a model to estimate the mean difference in temperatures with respect to 1951-1980 time-frame. 
+
+
+```{r}
+global_temps <- tuesdata$global_temps
+global_temps%>%select(1:13)%>%summary()
+```
+
+
+
+
+> Historical spatial variations in surface temperature anomalies are derived from historical weather station data and ocean data from ships, buoys, and other sensors. Uncertainties arise from measurement uncertainty, changes in spatial coverage of the station record, and systematic biases due to technology shifts and land cover changes.[^1]
+
+[^1]: Source: https://pubs.giss.nasa.gov/abs/le05800h.html
+
+The differencing applied to the estimated mean values are used to calculate the yearly rate of change in percentage value.
+
+$$\text{rate of change}=\frac{y_2-y_1}{x_2-x_1}$$
+
+```{r}
+diff <- global_temps %>%
+  select(1:13) %>% # count(Year) 1880 - 2023
+  pivot_longer(cols = -Year)%>%
+  mutate(color=ifelse(value>0,"up","down"))%>%
+  # grouping by Year, data are reframed to obtain a new vector
+  group_by(Year)%>%
+  # with the average values of the anomalies estimations
+  reframe(avg_val=mean(value))%>%
+  # the yearly rate of change in temperature anomalies
+  mutate(diff=c(0,diff(avg_val))*100)
+
+diff%>%summary()
+```
+
+```{r}
+summary(diff$avg_val)
+```
+
+Here we see the application:
+
+$$\text{rate ratio}=\frac{y_{t+1}}{y_{t}}$$
+```{r}
+rates_df <- diff%>%
+  mutate(abs_lag=abs(lag(avg_val)),
+         rate_change=diff/abs_lag,
+         rr= avg_val/lag(avg_val))
+
+rates_df%>%head
+```
+```{r}
+rates_df%>%
+  ggplot(aes(x=Year,y=avg_val))+
+  geom_rect(xmin=1938,xmax=1980,ymin=-Inf,ymax=Inf,alpha=0.1,fill="grey")+
+  geom_rect(xmin=1951,xmax=1980,ymin=-Inf,ymax=Inf,alpha=0.1,fill="grey60")+
+  geom_line()+
+  geom_line(aes(y=rr/100),
+            color="darkred",
+            inherit.aes = T)+
+  scale_x_continuous(n.breaks = 10)
+```
+
+```{r}
+rates_df%>%
+  filter(Year>= 1980)%>%
+  select(rr)%>%
+  map_dbl(\(rr) mean(rr,na.rm = T))
+```
+
+
+
+Considering all temperatures anomalies from 1978 to 2023, on average the steady increase is about 1.6% percent rate.
+```{r}
+diff%>%
+  drop_na()%>%
+  filter(Year> 1977)%>%
+  select(diff)%>%
+  map_dbl(\(diff) mean(diff))
+```
+
+
+
+The line plot shows yearly temperature anomalies from 1880 to 2023. 
+
+Estimate of temperature change that could be compared with predictions of global climate change in response to atmospheric carbon dioxide, aerosols, and changes in solar activity. 
+
+These in situ measurements are analyzed using an **algorithm** that considers the *varied spacing of temperature stations* around the globe and urban heat island effects.
+
+
+
+```{r message=FALSE,warning=FALSE}
+global_temps %>%
+  select(1:13) %>% # count(Year) 1880 - 2023
+  pivot_longer(cols = -Year) %>%
+  mutate(color=ifelse(value>0,"up","down")) %>%
+  # group_by(Year)%>%
+  # reframe(avg_val=mean(value))%>%
+  ggplot(aes(x=Year,y=value,group=name,color=name))+
+  geom_line(linewidth=0.3)+
+  geom_smooth(se=F,linewidth=0.1)+
+  scale_x_continuous(n.breaks = 10)+
+  scale_color_manual(values = RColorBrewer::brewer.pal(12,"Paired"))+
+  labs(color="Time(Month)")+
+  ggthemes::theme_fivethirtyeight()
+```
+
+
+
+```{r}
+diff %>%
+ggplot(aes(x=Year,y=diff))+
+  geom_line(color="darkred",
+            linewidth=0.5)+
+  geom_hline(yintercept = 0)
+```
+
+```{r}
+global_temps2 <- global_temps %>%
+  select(1:13) %>% # count(Year) 1880 - 2023
+  pivot_longer(cols = -Year) %>%
+  mutate(color=ifelse(value>0,"up","down")) 
+
+global_temps2 %>% head
+```
+
+
+
+An approximate explanation:
+```{r}
+set.seed(1234)
+train_id <-  sample_frac(tibble(id=row_number(global_temps2)),0.8)
+training <- global_temps2[pull(train_id),]
+testing <-  global_temps2%>%anti_join(training)
+
+
+fit<- lm(value ~ Year, data=training)
+summary(fit, show.intercept= FALSE)
+```
+
+
+```{r}
+broom::augment(fit)%>%head
+```
+
+```{r}
+broom::augment(fit)%>%
+  left_join(global_temps2,by=c("Year","value"))%>%
+  ggplot(aes(x=Year,value,group=name))+
+  geom_line(color="steelblue",linewidth=0.5)+
+  geom_line(aes(y=.fitted),inherit.aes = T)
+```
+
+```{r}
+predict(fit,newdata = tibble(Year=c(2024,2025,2026)))
+```
+
+```{r}
+prediction<- tibble(Year=c(2024,2025,2026),
+                    pred=predict(fit,
+                                 newdata = tibble(Year=c(2024,2025,2026))))
+
+broom::augment(fit)%>%
+  left_join(global_temps2,by=c("Year","value"))%>%
+  ggplot(aes(x=Year,value))+
+  geom_line(aes(group=name),color="steelblue",linewidth=0.5)+
+  geom_line(aes(y=.fitted),inherit.aes = T)+
+  geom_line(data=prediction, mapping=aes(x=Year,y=pred),color="darkred")
+```
+
+
+```{r}
+tag<-tibble(tag_history= c("The basic GISS temperature analysis scheme was defined in the late 1970s by James Hansen when a method of estimating global temperature change was needed for comparison with one-dimensional global climate models."),
+            tag_stats = c("According to an ongoing temperature analysis led by scientists at NASA's Goddard Institute for Space Studies (GISS), the average global temperature on Earth has increased by at least 1.1° Celsius (1.9° Fahrenheit) since 1880."),
+            tag_reading =c("How to read this graph: The dashed-line depicts the average Global temperature with a one-year lag. The bars represent temperature anomalies estimated with respect to the 1951-1980 climatology."))
+```
+
+
+
+```{r message=FALSE,warning=FALSE}
+library(grid)
+
+global_temps2 %>%
+  ggplot(aes(x=Year,y=value))+
+  geom_line(data=diff,
+            mapping=aes(x=Year,y=diff),
+            inherit.aes = F,
+            linetype="dashed",
+            color="red",
+            linewidth=0.05)+
+  geom_rect(xmin=1951,xmax=1980,
+                ymin=-4,ymax=4,
+            #fill="grey70",
+            alpha=0.8)+
+  geom_col(aes(fill=color))+
+  ggthemes::theme_fivethirtyeight()
+```
+
+
+```{r message=FALSE,warning=FALSE}
+global_temps2 %>%
+  ggplot(aes(x=Year,y=value))+
+  geom_line(data=diff,
+            mapping=aes(x=Year,y=diff),
+            inherit.aes = F,
+            linetype="dashed",
+            color="grey80",
+            linewidth=0.1)+
+  geom_rect(xmin=1951,xmax=1980,
+                ymin=-4,ymax=4,
+            alpha=0.8)+
+  geom_col(aes(fill=color))+
+  geom_segment(aes(x=min(Year)-1,xend=min(Year)-1,
+                   y=0,yend=-10),
+               color="grey70",
+               linewidth=1.5,
+               lineend="butt",
+               arrow=arrow(length = unit(0.1, "inches")))+
+  geom_segment(aes(x=max(Year)+1,xend=max(Year)+1,
+                   y=0,yend=10),
+               color="grey70",
+               linewidth=1.5,
+               lineend="butt",
+               arrow=arrow(length = unit(0.1, "inches")))+
+  geom_segment(aes(x=1940,xend=1940,
+                 y=0,yend=10),
+               color="grey70",
+               linewidth=0.5,
+               lineend="butt",
+               arrow=arrow(length = unit(0.1, "inches")))+
+  geom_segment(aes(x=1957,xend=1957,
+               y=0,yend=10),
+             color="grey70",
+             linewidth=0.5,
+             lineend="butt",
+             arrow=arrow(length = unit(0.1, "inches")))+
+   geom_segment(aes(x=1979,xend=1979,
+              y=0,yend=-10),
+             color="grey70",
+             linewidth=0.5,
+             lineend="butt")+
+  ggtext::geom_textbox(data = tag,aes(x=1979,y=-15,label = tag_stats),
+                     size = 3, 
+                     family="Roboto Condensed",
+                     width = unit(20, "line"), 
+                     alpha = 0.9,
+                     color="grey70",
+                     fill="grey4",
+                     box.colour = "grey70") +
+  ggtext::geom_textbox(data = tag,aes(x=1920,y=-25,label = tag_reading),
+                     size = 3, 
+                     family="Roboto Condensed",
+                     width = unit(20, "line"), 
+                     alpha = 0.9,
+                     color="grey70",
+                     fill="grey4",
+                     box.colour = "grey4") +
+  geom_hline(yintercept = 0,linewidth=2,color="grey70")+
+  geom_vline(xintercept = 1951,color="red",alpha=0.2)+
+  geom_vline(xintercept = 1980,color="red",alpha=0.2)+
+  scale_x_continuous(n.breaks = 10)+
+  scale_y_continuous()+
+  annotate(geom = "text",
+         family="Roboto Condensed",
+         fontface="bold",
+         label="Global Surface\nTemperatures Anomalies\n1880 - 2023",
+         size=12,
+         color="grey70",
+         hjust=0,
+         x = 1880 ,y =c(21) )+
+  annotate(geom = "text",
+         family="Roboto Condensed",
+         fontface="bold",
+         label="First rise\nto previous year in 1940 ",
+         size=3,
+         color="grey70",
+         hjust=0,
+         x = 1941 ,y =c(13) )+
+  annotate(geom = "text",
+        family="Roboto Condensed",
+        fontface="bold",
+        label="Second big rise\nto previous year in 1957",
+        size=3,
+        color="grey70",
+        hjust=0,
+        x = 1959 ,y =c(7) )+
+  annotate(geom = "text",
+      family="Roboto Condensed",
+      fontface="bold",
+      label="Steady average rise of 1.09°C\nsince 1979",
+      size=3,
+      color="grey70",
+      hjust=0,
+      x = 1980 ,y =c(-7) )+
+  annotation_custom(grob = grid::circleGrob(x=0,y=0.1,gp=gpar(col="grey70",fill=NA)),
+                    xmin = 1940,
+                    xmax = 1950,
+                    ymin = 0,ymax = 10)+
+  ggthemes::scale_fill_fivethirtyeight()+
+  labs(title="",
+       caption = "\nDataSource: NASA GISS Surface Temperature Analysis (GISTEMP v4)\nDataViz: #TidyTuesday 2023 - week 28 by Federica Gazzelloni\n",
+       fill="Temperature",
+       y="Monthly Means")+
+  theme_void()+
+  theme(text=element_text(color="grey70",family="Roboto Condensed"),
+        plot.caption = element_text(hjust = 0.5,lineheight = 1),
+        axis.text.x = element_text(color="grey70"),
+        plot.background = element_rect(color="grey4",
+                                       fill="grey4"),
+        legend.position = "bottom",
+        legend.title = element_text(color="black"),
+        legend.text = element_text(color="black"),
+        legend.background = element_rect(color="grey70",fill="grey70"))
+```
+
+```{r}
+ggsave("w28_GIST.png")
+```
+
