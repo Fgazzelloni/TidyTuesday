@@ -43,4 +43,5 @@ tb_images <- matrix(all_images1$value,ncol=4,byrow = TRUE)%>%
 
 
 tb_images%>%
-  gtsave_extra("data/2021/gather/table_collage_2021.png",vwidth = 1600)
+  gtsave_extra("data/2021/gather/table_collage_2021.png",
+               vwidth = 1600)

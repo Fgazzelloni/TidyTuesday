@@ -1,0 +1,252 @@
+---
+title: "TidyTuesday 2023 w47 RLadies Chapters"
+author: "Federica Gazzelloni"
+execute:  
+  comments: ""
+  eval: true
+  echo: true
+  warning: false
+  message: false
+---
+
+# Overview
+
+
+This week is all about `R-Ladies` Chapters! This is a map of all available chapters' events from 2012 to 2021.
+
+
+### Load libraries
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(sysfonts)
+library(showtext)
+```
+
+
+### Load data
+
+Read in the `TidyTuesday` and  the `JSON` file from the `RLadies Global` GitHub Repository.
+
+```{r}
+rladies_chapters <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-11-21/rladies_chapters.csv')
+
+rladies_chapters%>%head
+```
+
+
+```{r}
+url <- "https://raw.githubusercontent.com/rladies/rladies.github.io/main/data/chapters_meetup.json"
+countries <- fromJSON(url)
+countries%>%head
+```
+
+
+Check the data dimensions and n. of chapters in each set.
+```{r}
+rladies_chapters %>%dim;
+countries%>%dim;
+rladies_chapters %>%count(chapter)%>%dim # 209 chapters
+```
+
+
+```{r}
+countries%>%
+  filter(status=="active")%>% # 220 active chapters
+  count(urlname)%>%dim
+```
+
+### Active Chapters
+
+```{r}
+rladies_geo <- countries%>%
+  filter(status=="active")%>% # only active chapters
+  select(chapter=urlname,country,ISO_A2=country_acronym,lon,lat)
+rladies_geo %>% head
+```
+
+### Join the sets
+
+```{r}
+rladies_data <- rladies_geo %>%
+  full_join(rladies_chapters,by="chapter")%>%
+  distinct()
+
+rladies_data%>%count(chapter)%>%dim
+```
+```{r}
+rladies_data%>%
+  select(country,title,date,year)%>%head
+```
+
+### Missing geo information
+```{r}
+missing_coords <- rladies_data%>%
+  filter(is.na(lat))%>%
+  count(chapter)%>%select(-n)%>%
+  mutate(chapter=gsub("rladies-","",chapter))
+missing_coords%>%dim
+```
+
+Here is the table for missing information in the coordinates:
+```{r}
+# Create a tibble with missing location, latitude, and longitude
+country <- c("Aarhus", "Algiers", "Cincinnati", "Comitan", "Curitiba", "Jeddah", "Kumasi", 
+               "La Plata", "Lausanne", "Leuven", "Loughborough", "Louisville", "Milagro", 
+               "Rabat", "Tiruchirappalli", "Tucson, AZ", "Wageningen", "Waltham", 
+               "RLadiesNYC (New York)", "Spotkania Entuzjastów R (Warsaw R Users Group Meetup)")
+
+lat <- c(56.1629, 36.7528, 39.1031, 16.2550, -25.4284, 21.3891, 6.6885, -34.9215, 46.5197, 
+              50.8792, 52.7721, 38.2527, -2.1296, 33.9716, 10.7905, 32.2226, 51.9690, 42.3765, 
+              40.7128, 52.2297)
+
+lon <- c(10.2039, 3.0420, -84.5120, -92.1371, -49.2733, 39.8579, -1.6244, -57.9545, 6.6323, 
+               4.7009, -1.2062, -85.7585, -79.5882, -6.8498, 78.7047, -110.9747, 5.6668, -71.2356, 
+               -74.0060, 21.0122)
+
+# Create a tibble
+missing_coords <- tibble(country,lon,lat)%>%
+  mutate(chapter=paste0("rladies-",tolower(country)),.after="country",
+         chapter=case_when(chapter=="rladies-rladiesnyc (new york)"~"rladiesnyc",
+                           chapter=="rladies-spotkania entuzjastów r (warsaw r users group meetup)"~"spotkania-entuzjastow-r-warsaw-r-users-group-meetup",
+                           chapter=="rladies-la plata"~"rladies-la-plata",
+                           chapter=="rladies-tucson, az"~"rladies-tucson-az",
+                           TRUE~chapter))
+
+missing_coords %>%head
+```
+
+
+
+```{r}
+rladies_data_full <- rladies_data %>%
+  group_by(country,chapter)%>%
+  summarise(lon=median(lon,na.rm = TRUE),
+            lat=median(lat,na.rm = TRUE))%>%
+  ungroup()%>%
+  arrange(-lat)%>%# filter(str_detect(chapter,"tucson"))
+  rows_update(y=missing_coords,
+              by = "chapter",
+              unmatched="ignore")%>%
+  inner_join(rladies_data,by=c("country","chapter","lon","lat"))
+
+rladies_data_full%>%DataExplorer::profile_missing()
+```
+
+
+## Make a Map
+```{r}
+world_sf <- rworldmap::getMap()%>%
+  sf::st_as_sf()
+  
+
+ggplot(world_sf)+
+  geom_sf()
+```
+
+```{r}
+rladies_data_full%>%
+  count(country,ISO_A2)%>%
+  ggplot(aes(x=n,y=fct_reorder(country,n),fill=ISO_A2))+
+  geom_col(show.legend = F)+
+  scale_x_log10()+
+  theme_bw(base_size = 9)
+```
+```{r}
+world_countries<- world_sf%>%
+  rownames_to_column("country")
+wcountry<-unique(world_countries$ISO_A2)
+rldcountry<- unique(rladies_data_full$ISO_A2)
+```
+
+
+```{r}
+rladies_sf <- world_sf%>%
+  rownames_to_column("country")%>%
+  inner_join(rladies_data_full,by="ISO_A2")
+```
+
+
+
+```{r}
+ggplot()+
+  geom_sf(data=rladies_sf)+
+  theme_bw()
+```
+
+### Make the Map
+
+Set the fonts
+
+```{r}
+font_add_google(name = "Permanent Marker", family = "Permanent Marker")
+font_add_google(name = "Acme", family = "Acme")
+showtext_auto()
+showtext_opts(dpi = 320)
+```
+
+```{r}
+rladies_data%>%
+  count(year)%>%
+  mutate(diff=c(0,diff(n)),
+         change=round(diff/lag(n)*100))
+```
+
+```{r}
+rladies_data%>%
+  count(lon,lat)%>%
+  summary()
+```
+
+```{r}
+rladies_text <- rladies_data_full%>%
+  group_by(country)%>%
+  mutate(avg_lon=mean(range(lon)),
+         avg_lat=mean(range(lat)))%>%
+  count(country,avg_lon,avg_lat)
+rladies_text
+```
+
+
+```{r}
+set.seed(25112023)
+ggplot()+
+  geom_sf(data=world_sf,color="pink",fill="#f0eeeb")+
+  geom_sf(data=rladies_sf,fill="pink")+
+  geom_point(data=rladies_data%>%count(lon,lat),
+             mapping=aes(x=lon,y=lat,fill=n,size=n,alpha=n),
+             shape=21,stroke=0.5,
+             #size=0.8,
+             color="grey40",
+             inherit.aes = F)+
+  ggrepel::geom_text_repel(data=rladies_text,
+                          mapping=aes(x=avg_lon,y=avg_lat,
+                                      label=country),
+                          size=2,
+                          max.overlaps = Inf,
+                          inherit.aes = F)+
+  scale_fill_gradient2(low = "white",
+                        mid="purple",
+                        high = "red",
+                        breaks=c(1,50,100))+
+  guides(alpha="none",size="none")+
+  coord_sf(clip = "off")+
+  labs(title="R-Ladies Chapters around the World",
+       subtitle="The mission of R-Ladies is to support minority gender R enthusiasts in achieving their programming potential\nby building a collaborative global network of R leaders, mentors, learners, and developers\nto facilitate individual and collective progress worldwide.",
+       caption="DataSource: RLadies Global #TidyTuesday 2023 week 47 RLadies Chapters\nMap-Vis: @fgazzelloni",
+       fill="n.Events\n2012-2021")+
+  ggthemes::theme_map(base_size = 14,base_family = "Acme")+
+  theme(plot.title = element_text(size=30,hjust=0.5),
+        plot.subtitle = element_text(size=10,hjust=0.5),
+        legend.position = c(0.05,0.15),
+        legend.key.size = unit(8,units = "pt"),
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=8),
+        legend.background = element_rect(fill="#f0eeeb",color="pink"))
+```
+```{r}
+ggsave("w47_rladies_chapter_events.png",
+       bg="#cdbdcc",
+       height = 5)
+```
+

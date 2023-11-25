@@ -6,3 +6,4 @@ rdata
 notes_for_readme.R
 *.html
 scripts
+**/.DS_Store
