@@ -1,0 +1,417 @@
+---
+title: "#TidyTuesday week43 R/Pharma"
+date: ""
+author: "Federica Gazzelloni"
+format: html
+editor: visual
+execute: 
+  warning: false
+  message: false
+---
+
+# Overview
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+tidymodels::tidymodels_prefer()
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2023-10-24')
+raw <- tuesdata$patient_risk_profiles
+# raw%>%glimpse
+```
+
+```{r}
+# write_csv(raw,"data/raw.csv")
+```
+
+```{r}
+raw[1:2,]
+```
+
+```{r}
+raw %>%
+  column_to_rownames("personId") %>%
+  pivot_longer(cols=contains("age group:"),
+               names_to = "age_group_id",values_to = "age_group")%>%
+  filter(!age_group==0)%>%
+  count(age_group_id)
+```
+
+```{r}
+raw %>%
+  pivot_longer(cols = contains("predicted risk"), 
+               names_to = "predicted_risk_id",
+               values_to = "predicted_risk")%>%
+  count(predicted_risk_id)
+```
+
+```{r}
+dat <- raw %>%
+    pivot_longer(cols = contains("predicted risk"), 
+               names_to = "predicted_risk_id",
+               values_to = "predicted_risk")%>%
+    pivot_longer(cols=contains("age group:"),
+               names_to = "age_group_id",
+               values_to = "age_group")%>%
+    filter(!age_group==0)%>%
+    select(-age_group)%>%
+    pivot_longer(cols = contains("Sex"), 
+               names_to = "Sex_id",
+               values_to = "Sex") %>%#count(Sex_id,Sex)
+  filter(!Sex==0)%>%
+  select(-Sex)%>%# dim
+  pivot_longer(cols = contains("in prior year"), 
+               names_to = "Cause_id",
+               values_to = "Cause")%>%
+  filter(!Cause==0)%>%
+  select(-Cause)%>%
+   mutate(age_group_id=gsub("age group: ","",age_group_id),
+         Sex_id=gsub("Sex = ","",Sex_id),
+         Cause_id=gsub(" exposures in prior year","",Cause_id),
+         predicted_risk_id=gsub("predicted risk of ","",predicted_risk_id),
+         )%>%
+  mutate(personId=as.factor(personId))
+  
+  
+dat %>% head  
+```
+
+```{r}
+dat %>%
+  #count(predicted_risk_id)
+  filter(str_detect(predicted_risk_id,"Dementia"))%>% head
+```
+
+Let's use the `raw data` which provides dummy variables.
+
+```{r}
+dementia <- raw %>%
+  select(contains("Dementia"))%>%
+  cbind(raw%>%select(!contains("Dementia")))%>%
+  janitor::clean_names()
+```
+
+## Spending Data
+
+```{r}
+set.seed(24102023)
+split <- initial_split(dementia,prop = 0.8)
+train <- training(split)
+test <- testing(split)
+folds <- vfold_cv(train)
+```
+
+```{r}
+normalized_rec <- recipe(predicted_risk_of_dementia ~ ., train) %>%
+  update_role("person_id",new_role = "id") %>%
+  step_normalize(all_predictors()) %>%  
+  step_corr(all_predictors())%>%
+  step_zv(all_predictors())
+```
+
+```{r}
+normalized_rec%>%
+  prep()%>%
+  juice()%>%
+  head
+```
+
+## Make many models
+
+```{r}
+library(rules)
+library(baguette)
+
+linear_reg_spec <- 
+   linear_reg(penalty = tune(), 
+              mixture = tune()) %>% 
+   set_engine("glmnet")
+
+nnet_spec <- 
+   mlp(hidden_units = tune(), 
+       penalty = tune(), 
+       epochs = tune()) %>% 
+   set_engine("nnet", MaxNWts = 2600) %>% 
+   set_mode("regression")
+
+mars_spec <- 
+   mars(prod_degree = tune()) %>%  #<- use GCV to choose terms
+   set_engine("earth") %>% 
+   set_mode("regression")
+
+svm_r_spec <- 
+   svm_rbf(cost = tune(), 
+           rbf_sigma = tune()) %>% 
+   set_engine("kernlab") %>% 
+   set_mode("regression")
+
+svm_p_spec <- 
+   svm_poly(cost = tune(), 
+            degree = tune()) %>% 
+   set_engine("kernlab") %>% 
+   set_mode("regression")
+
+knn_spec <- 
+   nearest_neighbor(neighbors = tune(), 
+                    dist_power = tune(), 
+                    weight_func = tune()) %>% 
+   set_engine("kknn") %>% 
+   set_mode("regression")
+
+cart_spec <- 
+   decision_tree(cost_complexity = tune(), 
+                 min_n = tune()) %>% 
+   set_engine("rpart") %>% 
+   set_mode("regression")
+
+bag_cart_spec <- 
+   bag_tree() %>% 
+   set_engine("rpart", times = 50L) %>% 
+   set_mode("regression")
+
+rf_spec <- 
+   rand_forest(mtry = tune(), 
+               min_n = tune(), 
+               trees = 1000) %>% 
+   set_engine("ranger") %>% 
+   set_mode("regression")
+
+xgb_spec <- 
+   boost_tree(tree_depth = tune(), 
+              learn_rate = tune(), 
+              loss_reduction = tune(), 
+              min_n = tune(), 
+              sample_size = tune(), 
+              trees = tune()) %>% 
+   set_engine("xgboost") %>% 
+   set_mode("regression")
+
+cubist_spec <- 
+   cubist_rules(committees = tune(), 
+                neighbors = tune()) %>% 
+   set_engine("Cubist") 
+```
+
+```{r}
+nnet_param <- 
+   nnet_spec %>% 
+   extract_parameter_set_dials() %>% 
+   update(hidden_units = hidden_units(c(1, 27)))
+```
+
+## Workflow
+
+```{r}
+normalized <- 
+   workflow_set(
+      preproc = list(normalized = normalized_rec), 
+      models = list(SVM_radial = svm_r_spec, 
+                    SVM_poly = svm_p_spec, 
+                    KNN = knn_spec, 
+                    neural_network = nnet_spec)
+      )
+normalized
+```
+
+```{r}
+normalized <- 
+   normalized %>% 
+   option_add(param_info = nnet_param, 
+              id = "normalized_neural_network")
+normalized
+```
+
+```{r}
+model_vars <- 
+   workflow_variables(outcomes = predicted_risk_of_dementia, 
+                      predictors = everything())
+
+no_pre_proc <- 
+   workflow_set(
+      preproc = list(simple = model_vars), 
+      models = list(MARS = mars_spec, 
+                    CART = cart_spec, 
+                    CART_bagged = bag_cart_spec,
+                    RF = rf_spec, 
+                    boosting = xgb_spec, 
+                    Cubist = cubist_spec)
+      )
+no_pre_proc
+```
+
+```{r}
+all_workflows <- 
+   bind_rows(no_pre_proc, normalized) %>% 
+   # Make the workflow ID's a little more simple: 
+   mutate(wflow_id = gsub("(simple_)|(normalized_)", "", wflow_id))
+all_workflows
+```
+
+## Tuning
+
+```{r}
+doParallel::registerDoParallel()
+```
+
+```{r}
+#| eval: false
+grid_ctrl <-
+   control_grid(
+      save_pred = TRUE,
+      parallel_over = "everything",
+      save_workflow = TRUE
+   )
+
+grid_results <-
+  
+   all_workflows %>% 
+  
+  workflow_map(
+      seed = 24102023,
+      resamples = folds,
+      # warning this is for educational purposes
+      grid = 5,
+      control = grid_ctrl
+   )
+
+
+```
+
+```{r}
+#| echo: false
+# saveRDS(grid_results,file="data/grid_results.rds")
+grid_results <- readRDS("data/grid_results.rds")
+```
+
+```{r}
+grid_results %>% 
+   rank_results() %>% 
+   filter(.metric == "rmse") %>% 
+   select(model, .config, rmse = mean, rank)
+```
+
+```{r}
+autoplot(
+   grid_results,
+   rank_metric = "rmse",  # <- how to order models
+   metric = "rmse",       # <- which metric to visualize
+   select_best = TRUE     # <- one point per workflow
+) +
+   geom_text(aes(y = mean-0.02, 
+                 label = wflow_id), 
+             angle = 90, 
+             hjust = 1) +
+   lims(y = c(-0.05, 0.1)) +
+   theme(legend.position = "none")
+```
+
+```{r}
+autoplot(grid_results, id = "Cubist", metric = "rmse")
+```
+
+## Racing
+
+```{r}
+#| eval: false
+library(finetune)
+
+race_ctrl <-
+   control_race(
+      save_pred = TRUE,
+      parallel_over = "everything",
+      save_workflow = TRUE
+   )
+
+race_results <-
+   all_workflows %>%
+   
+  workflow_map(
+      "tune_race_anova",
+      seed = 1503,
+      resamples = folds,
+      # warning this is for educational purposes
+      grid = 5,
+      control = race_ctrl
+   )
+
+
+```
+
+```{r}
+#| echo: false
+# saveRDS(race_results,file="data/race_results.rds")
+
+race_results <- readRDS("data/race_results.rds")
+```
+
+```{r}
+autoplot(
+   race_results,
+   rank_metric = "rmse",  
+   metric = "rmse",       
+   select_best = TRUE    
+) +
+   geom_text(aes(y = mean - 0.02, 
+                 label = wflow_id), 
+             angle = 90, 
+             hjust = 1) +
+   lims(y = c(-0.05, 0.1)) +
+   theme(legend.position = "none")
+```
+
+## Stack
+
+```{r}
+library(stacks)
+#?stacks
+dementia_stack <- 
+  stacks() %>% 
+  add_candidates(race_results)
+
+dementia_stack
+```
+
+```{r}
+set.seed(25102023)
+ens <- blend_predictions(dementia_stack)
+autoplot(ens)
+```
+
+```{r}
+ens
+```
+
+```{r}
+set.seed(25102023)
+ens2 <- blend_predictions(dementia_stack, 
+                         penalty = 10^seq(-2, -0.5, length = 20))
+autoplot(ens2)
+```
+
+Let's check which model provide the largest contributions to the ensemble.
+
+```{r}
+autoplot(ens2, "weights") +
+  geom_text(aes(x = weight + 0.01, 
+                label = model), hjust = 0) + 
+  theme(legend.position = "none") +
+  lims(x = c(-0.01, 1))
+```
+
+```{r}
+ens_fit <- fit_members(ens2)
+```
+
+```{r}
+reg_metrics <- metric_set(rmse, rsq)
+
+ens_test_pred <- 
+  predict(ens_fit, test) %>% 
+  bind_cols(test)
+
+ens_test_pred %>% 
+  reg_metrics(predicted_risk_of_dementia, .pred)
+```
